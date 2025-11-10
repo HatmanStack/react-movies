@@ -26,7 +26,7 @@ describe('LoadingSpinner', () => {
   });
 
   it('should render with overlay style', () => {
-    const { getByTestId } = render(
+    const { getByTestId: _getByTestId } = render(
       <LoadingSpinner message="Loading..." overlay={true} />,
       { wrapper }
     );

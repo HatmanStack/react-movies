@@ -5,12 +5,21 @@
  * Note: Database row types use `any` because SQLite query results are dynamically typed.
  * Each row is immediately mapped to a strongly-typed interface for type safety.
  * ESLint rule @typescript-eslint/no-explicit-any is disabled for database operations.
+ *
+ * Platform-specific: Uses SQLite on native, AsyncStorage on web
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getDatabase } from './init';
 import { MovieDetails, VideoDetails, ReviewDetails } from '../models/types';
+
+/**
+ * Check if we're running on web
+ */
+const isWeb = Platform.OS === 'web';
 
 /**
  * Helper function to map database row to MovieDetails object
@@ -41,9 +50,25 @@ function mapRowToMovie(row: any): MovieDetails {
  * @param movie - Movie to insert/update
  */
 export async function insertMovie(movie: MovieDetails): Promise<void> {
-  const db = getDatabase();
-
   try {
+    if (isWeb) {
+      // Web: store in AsyncStorage
+      const allMoviesJson = await AsyncStorage.getItem('movies_all');
+      const movies: MovieDetails[] = allMoviesJson ? JSON.parse(allMoviesJson) : [];
+      const index = movies.findIndex(m => m.id === movie.id);
+
+      if (index >= 0) {
+        movies[index] = movie;
+      } else {
+        movies.push(movie);
+      }
+
+      await AsyncStorage.setItem('movies_all', JSON.stringify(movies));
+      return;
+    }
+
+    // Native: use SQLite
+    const db = getDatabase();
     await db.runAsync(
       `INSERT OR REPLACE INTO movie_details
        (id, title, overview, poster_path, release_date, vote_average, vote_count, popularity, original_language, favorite, toprated, popular)
@@ -58,9 +83,9 @@ export async function insertMovie(movie: MovieDetails): Promise<void> {
         movie.vote_count,
         movie.popularity,
         movie.original_language,
-        movie.favorite ? 1 : 0, // boolean → INTEGER
-        movie.toprated ? 1 : 0, // boolean → INTEGER
-        movie.popular ? 1 : 0, // boolean → INTEGER
+        movie.favorite ? 1 : 0,
+        movie.toprated ? 1 : 0,
+        movie.popular ? 1 : 0,
       ]
     );
   } catch (error) {
@@ -79,9 +104,14 @@ export async function insertMovie(movie: MovieDetails): Promise<void> {
  * @returns Movie details or null if not found
  */
 export async function getMovieById(movieId: number): Promise<MovieDetails | null> {
-  const db = getDatabase();
-
   try {
+    if (isWeb) {
+      const allMoviesJson = await AsyncStorage.getItem('movies_all');
+      const movies: MovieDetails[] = allMoviesJson ? JSON.parse(allMoviesJson) : [];
+      return movies.find(m => m.id === movieId) || null;
+    }
+
+    const db = getDatabase();
     const row = await db.getFirstAsync<any>(
       'SELECT * FROM movie_details WHERE id = ?',
       [movieId]
@@ -103,11 +133,15 @@ export async function getMovieById(movieId: number): Promise<MovieDetails | null
  * @returns Array of favorite movies
  */
 export async function getFavoriteMovies(): Promise<MovieDetails[]> {
-  const db = getDatabase();
-
   try {
-    const rows = await db.getAllAsync<any>('SELECT * FROM movie_details WHERE favorite = 1');
+    if (isWeb) {
+      const allMoviesJson = await AsyncStorage.getItem('movies_all');
+      const movies: MovieDetails[] = allMoviesJson ? JSON.parse(allMoviesJson) : [];
+      return movies.filter(m => m.favorite);
+    }
 
+    const db = getDatabase();
+    const rows = await db.getAllAsync<any>('SELECT * FROM movie_details WHERE favorite = 1');
     return rows.map(mapRowToMovie);
   } catch (error) {
     console.error('Failed to get favorite movies:', error);
@@ -124,11 +158,15 @@ export async function getFavoriteMovies(): Promise<MovieDetails[]> {
  * @returns Array of popular movies
  */
 export async function getPopularMovies(): Promise<MovieDetails[]> {
-  const db = getDatabase();
-
   try {
-    const rows = await db.getAllAsync<any>('SELECT * FROM movie_details WHERE popular = 1');
+    if (isWeb) {
+      const allMoviesJson = await AsyncStorage.getItem('movies_all');
+      const movies: MovieDetails[] = allMoviesJson ? JSON.parse(allMoviesJson) : [];
+      return movies.filter(m => m.popular);
+    }
 
+    const db = getDatabase();
+    const rows = await db.getAllAsync<any>('SELECT * FROM movie_details WHERE popular = 1');
     return rows.map(mapRowToMovie);
   } catch (error) {
     console.error('Failed to get popular movies:', error);
@@ -145,11 +183,15 @@ export async function getPopularMovies(): Promise<MovieDetails[]> {
  * @returns Array of top-rated movies
  */
 export async function getTopRatedMovies(): Promise<MovieDetails[]> {
-  const db = getDatabase();
-
   try {
-    const rows = await db.getAllAsync<any>('SELECT * FROM movie_details WHERE toprated = 1');
+    if (isWeb) {
+      const allMoviesJson = await AsyncStorage.getItem('movies_all');
+      const movies: MovieDetails[] = allMoviesJson ? JSON.parse(allMoviesJson) : [];
+      return movies.filter(m => m.toprated);
+    }
 
+    const db = getDatabase();
+    const rows = await db.getAllAsync<any>('SELECT * FROM movie_details WHERE toprated = 1');
     return rows.map(mapRowToMovie);
   } catch (error) {
     console.error('Failed to get top-rated movies:', error);
@@ -166,11 +208,14 @@ export async function getTopRatedMovies(): Promise<MovieDetails[]> {
  * @returns Array of all movies
  */
 export async function getAllMovies(): Promise<MovieDetails[]> {
-  const db = getDatabase();
-
   try {
-    const rows = await db.getAllAsync<any>('SELECT * FROM movie_details');
+    if (isWeb) {
+      const allMoviesJson = await AsyncStorage.getItem('movies_all');
+      return allMoviesJson ? JSON.parse(allMoviesJson) : [];
+    }
 
+    const db = getDatabase();
+    const rows = await db.getAllAsync<any>('SELECT * FROM movie_details');
     return rows.map(mapRowToMovie);
   } catch (error) {
     console.error('Failed to get all movies:', error);
@@ -187,9 +232,16 @@ export async function getAllMovies(): Promise<MovieDetails[]> {
  * @param movieId - Movie ID to delete
  */
 export async function deleteMovie(movieId: number): Promise<void> {
-  const db = getDatabase();
-
   try {
+    if (isWeb) {
+      const allMoviesJson = await AsyncStorage.getItem('movies_all');
+      const movies: MovieDetails[] = allMoviesJson ? JSON.parse(allMoviesJson) : [];
+      const filtered = movies.filter(m => m.id !== movieId);
+      await AsyncStorage.setItem('movies_all', JSON.stringify(filtered));
+      return;
+    }
+
+    const db = getDatabase();
     await db.runAsync('DELETE FROM movie_details WHERE id = ?', [movieId]);
   } catch (error) {
     console.error('Failed to delete movie:', error);
@@ -230,9 +282,31 @@ function mapRowToVideo(row: any): VideoDetails {
 export async function insertVideo(
   video: Omit<VideoDetails, 'identity'> | VideoDetails
 ): Promise<void> {
-  const db = getDatabase();
-
   try {
+    if (isWeb) {
+      const key = `videos_${video.id}`;
+      const videosJson = await AsyncStorage.getItem(key);
+      const videos: VideoDetails[] = videosJson ? JSON.parse(videosJson) : [];
+
+      const videoWithIdentity: VideoDetails = 'identity' in video
+        ? video
+        : { ...video, identity: Date.now() };
+
+      const index = videos.findIndex(v =>
+        'identity' in video ? v.identity === video.identity : v.key === video.key
+      );
+
+      if (index >= 0) {
+        videos[index] = videoWithIdentity;
+      } else {
+        videos.push(videoWithIdentity);
+      }
+
+      await AsyncStorage.setItem(key, JSON.stringify(videos));
+      return;
+    }
+
+    const db = getDatabase();
     await db.runAsync(
       `INSERT OR REPLACE INTO video_details
        (id, image_url, iso_639_1, iso_3166_1, key, site, size, type)
@@ -264,11 +338,15 @@ export async function insertVideo(
  * @returns Array of videos for the movie
  */
 export async function getVideosForMovie(movieId: number): Promise<VideoDetails[]> {
-  const db = getDatabase();
-
   try {
-    const rows = await db.getAllAsync<any>('SELECT * FROM video_details WHERE id = ?', [movieId]);
+    if (isWeb) {
+      const key = `videos_${movieId}`;
+      const videosJson = await AsyncStorage.getItem(key);
+      return videosJson ? JSON.parse(videosJson) : [];
+    }
 
+    const db = getDatabase();
+    const rows = await db.getAllAsync<any>('SELECT * FROM video_details WHERE id = ?', [movieId]);
     return rows.map(mapRowToVideo);
   } catch (error) {
     console.error('Failed to get videos for movie:', error);
@@ -286,14 +364,19 @@ export async function getVideosForMovie(movieId: number): Promise<VideoDetails[]
  * @returns Array of trailers for the movie
  */
 export async function getTrailersForMovie(movieId: number): Promise<VideoDetails[]> {
-  const db = getDatabase();
-
   try {
+    if (isWeb) {
+      const key = `videos_${movieId}`;
+      const videosJson = await AsyncStorage.getItem(key);
+      const videos: VideoDetails[] = videosJson ? JSON.parse(videosJson) : [];
+      return videos.filter(v => v.type === 'Trailer');
+    }
+
+    const db = getDatabase();
     const rows = await db.getAllAsync<any>(
       "SELECT * FROM video_details WHERE type = 'Trailer' AND id = ?",
       [movieId]
     );
-
     return rows.map(mapRowToVideo);
   } catch (error) {
     console.error('Failed to get trailers for movie:', error);
@@ -329,9 +412,31 @@ function mapRowToReview(row: any): ReviewDetails {
 export async function insertReview(
   review: Omit<ReviewDetails, 'identity'> | ReviewDetails
 ): Promise<void> {
-  const db = getDatabase();
-
   try {
+    if (isWeb) {
+      const key = `reviews_${review.id}`;
+      const reviewsJson = await AsyncStorage.getItem(key);
+      const reviews: ReviewDetails[] = reviewsJson ? JSON.parse(reviewsJson) : [];
+
+      const reviewWithIdentity: ReviewDetails = 'identity' in review
+        ? review
+        : { ...review, identity: Date.now() };
+
+      const index = reviews.findIndex(r =>
+        'identity' in review ? r.identity === review.identity : r.author === review.author
+      );
+
+      if (index >= 0) {
+        reviews[index] = reviewWithIdentity;
+      } else {
+        reviews.push(reviewWithIdentity);
+      }
+
+      await AsyncStorage.setItem(key, JSON.stringify(reviews));
+      return;
+    }
+
+    const db = getDatabase();
     await db.runAsync(
       `INSERT OR REPLACE INTO review_details
        (id, author, content)
@@ -354,11 +459,15 @@ export async function insertReview(
  * @returns Array of reviews for the movie
  */
 export async function getReviewsForMovie(movieId: number): Promise<ReviewDetails[]> {
-  const db = getDatabase();
-
   try {
-    const rows = await db.getAllAsync<any>('SELECT * FROM review_details WHERE id = ?', [movieId]);
+    if (isWeb) {
+      const key = `reviews_${movieId}`;
+      const reviewsJson = await AsyncStorage.getItem(key);
+      return reviewsJson ? JSON.parse(reviewsJson) : [];
+    }
 
+    const db = getDatabase();
+    const rows = await db.getAllAsync<any>('SELECT * FROM review_details WHERE id = ?', [movieId]);
     return rows.map(mapRowToReview);
   } catch (error) {
     console.error('Failed to get reviews for movie:', error);

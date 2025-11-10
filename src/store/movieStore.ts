@@ -33,6 +33,11 @@ interface MovieStore {
   error: string | null;
   syncing: boolean;
   isOffline: boolean;
+  popularPage: number;
+  topRatedPage: number;
+  hasMorePopular: boolean;
+  hasMoreTopRated: boolean;
+  loadingMore: boolean;
 
   // Actions
   loadMoviesFromFilters: (filters: MovieFilter[]) => Promise<void>;
@@ -40,6 +45,7 @@ interface MovieStore {
   loadTopRatedMovies: () => Promise<void>;
   loadFavoriteMovies: () => Promise<void>;
   loadAllMovies: () => Promise<void>;
+  loadMoreMovies: () => Promise<void>;
   toggleFavorite: (movieId: number) => Promise<void>;
   refreshMovie: (movieId: number) => Promise<void>;
   clearError: () => void;
@@ -59,6 +65,11 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
   error: null,
   syncing: false,
   isOffline: false,
+  popularPage: 1,
+  topRatedPage: 1,
+  hasMorePopular: true,
+  hasMoreTopRated: true,
+  loadingMore: false,
 
   /**
    * Load movies from multiple active filters
@@ -146,37 +157,126 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
   },
 
   /**
+   * Load more movies (infinite scroll pagination)
+   * Fetches next page of movies from API and appends to existing list
+   */
+  loadMoreMovies: async () => {
+    const { loadingMore, syncing, isOffline, hasMorePopular, hasMoreTopRated, popularPage, topRatedPage } = get();
+
+    // Don't load if already loading, syncing, offline, or no more pages
+    if (loadingMore || syncing || isOffline || (!hasMorePopular && !hasMoreTopRated)) {
+      return;
+    }
+
+    set({ loadingMore: true, error: null });
+
+    try {
+      const { movies } = get();
+      const movieIds = new Set(movies.map(m => m.id));
+      const newMovies: MovieDetails[] = [];
+
+      // Helper function to map TMDb API response to MovieDetails
+      const mapTMDbToMovieDetails = (
+        movie: TMDbMovie,
+        popular: boolean,
+        toprated: boolean
+      ): MovieDetails => ({
+        id: movie.id,
+        title: movie.title || movie.name || '',
+        overview: movie.overview,
+        poster_path: movie.poster_path || '',
+        release_date: movie.release_date || movie.first_air_date || '',
+        vote_average: movie.vote_average,
+        vote_count: movie.vote_count,
+        popularity: movie.popularity,
+        original_language: movie.original_language,
+        favorite: false,
+        toprated,
+        popular,
+      });
+
+      // Load next page of popular movies if available
+      if (hasMorePopular) {
+        const nextPopularPage = popularPage + 1;
+        const popularResponse = await TMDbService.getPopularMovies(nextPopularPage);
+
+        for (const movie of popularResponse.results) {
+          const mappedMovie = mapTMDbToMovieDetails(movie, true, false);
+          if (!movieIds.has(mappedMovie.id)) {
+            movieIds.add(mappedMovie.id);
+            newMovies.push(mappedMovie);
+            await insertMovie(mappedMovie);
+          }
+        }
+
+        set({
+          popularPage: nextPopularPage,
+          hasMorePopular: popularResponse.page < popularResponse.total_pages,
+        });
+      }
+
+      // Load next page of top-rated if available
+      if (hasMoreTopRated) {
+        const nextTopRatedPage = topRatedPage + 1;
+        const topRatedResponse = await TMDbService.getTopRatedTV(nextTopRatedPage);
+
+        for (const movie of topRatedResponse.results) {
+          const mappedMovie = mapTMDbToMovieDetails(movie, false, true);
+          if (!movieIds.has(mappedMovie.id)) {
+            movieIds.add(mappedMovie.id);
+            newMovies.push(mappedMovie);
+            await insertMovie(mappedMovie);
+          }
+        }
+
+        set({
+          topRatedPage: nextTopRatedPage,
+          hasMoreTopRated: topRatedResponse.page < topRatedResponse.total_pages,
+        });
+      }
+
+      // Append new movies to existing list
+      set({ movies: [...movies, ...newMovies], loadingMore: false });
+    } catch (error) {
+      logError(error, 'loadMoreMovies');
+      const formatted = formatError(error);
+      set({ error: `Failed to load more movies: ${formatted.message}`, loadingMore: false });
+    }
+  },
+
+  /**
    * Toggle favorite status for a movie
-   * Implements optimistic update: update UI immediately, rollback on error
+   * Fetches movie from database, toggles favorite, and updates
+   * Works even if movie is not in current filtered list
    *
    * Replaces: toggle favorite → update database → LiveData notifies UI
    */
   toggleFavorite: async (movieId: number) => {
-    const { movies } = get();
-
-    // Find the movie in current state
-    const movieIndex = movies.findIndex((m) => m.id === movieId);
-    if (movieIndex === -1) {
-      set({ error: 'Movie not found in current list' });
-      return;
-    }
-
-    const movie = movies[movieIndex];
-    const newFavoriteStatus = !movie.favorite;
-
-    // Optimistic update: update UI immediately
-    const optimisticMovies = movies.map((m) =>
-      m.id === movieId ? { ...m, favorite: newFavoriteStatus } : m
-    );
-
-    set({ movies: optimisticMovies });
-
     try {
+      // Get the movie from the database (not from current filtered list)
+      const movie = await getMovieById(movieId);
+
+      if (!movie) {
+        set({ error: 'Movie not found' });
+        return;
+      }
+
+      const newFavoriteStatus = !movie.favorite;
+
       // Update database
       await insertMovie({ ...movie, favorite: newFavoriteStatus });
+
+      // Update in current movies list if present (optimistic update)
+      const { movies } = get();
+      const movieIndex = movies.findIndex((m) => m.id === movieId);
+
+      if (movieIndex !== -1) {
+        const optimisticMovies = movies.map((m) =>
+          m.id === movieId ? { ...m, favorite: newFavoriteStatus } : m
+        );
+        set({ movies: optimisticMovies });
+      }
     } catch (error) {
-      // Rollback on error
-      set({ movies });
       logError(error, 'toggleFavorite');
       const formatted = formatError(error);
       set({ error: `Failed to toggle favorite: ${formatted.message}` });
@@ -233,7 +333,7 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
       return;
     }
 
-    set({ syncing: true, loading: true, error: null });
+    set({ syncing: true, loading: true, error: null, popularPage: 1, topRatedPage: 1, hasMorePopular: true, hasMoreTopRated: true });
 
     try {
       // Helper function to map TMDb API response to MovieDetails
@@ -316,7 +416,7 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
       return;
     }
 
-    set({ syncing: true, loading: true, error: null });
+    set({ syncing: true, loading: true, error: null, popularPage: 1, topRatedPage: 1, hasMorePopular: true, hasMoreTopRated: true });
 
     try {
       // Get current favorites to preserve them

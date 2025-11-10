@@ -243,6 +243,10 @@ describe('MovieStore', () => {
       // Set up initial state with movies
       useMovieStore.setState({ movies: mockMovies });
       mockQueries.insertMovie.mockResolvedValue();
+      // Mock getMovieById to return the movie from mockMovies
+      mockQueries.getMovieById.mockImplementation((id: number) =>
+        Promise.resolve(mockMovies.find((m) => m.id === id) || null)
+      );
     });
 
     it('should toggle favorite status optimistically', async () => {
@@ -275,11 +279,12 @@ describe('MovieStore', () => {
     });
 
     it('should handle movie not found in list', async () => {
+      mockQueries.getMovieById.mockResolvedValue(null);
       const store = useMovieStore.getState();
       await store.toggleFavorite(999);
 
       const state = useMovieStore.getState();
-      expect(state.error).toBe('Movie not found in current list');
+      expect(state.error).toBe('Movie not found');
       expect(mockQueries.insertMovie).not.toHaveBeenCalled();
     });
 

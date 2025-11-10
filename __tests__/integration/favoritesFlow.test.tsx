@@ -9,6 +9,7 @@ import { useFilterStore } from '../../src/store/filterStore';
 // Mock database
 jest.mock('../../src/database/queries', () => ({
   insertMovie: jest.fn().mockResolvedValue(undefined),
+  getMovieById: jest.fn(),
   getFavoriteMovies: jest.fn().mockResolvedValue([]),
   getPopularMovies: jest.fn().mockResolvedValue([]),
   getTopRatedMovies: jest.fn().mockResolvedValue([]),
@@ -41,6 +42,8 @@ describe('Integration: Favorites Flow', () => {
   });
 
   it('toggles favorite status correctly', async () => {
+    const { getMovieById } = require('../../src/database/queries');
+
     const testMovie = {
       id: 1,
       title: 'Test Movie',
@@ -56,6 +59,7 @@ describe('Integration: Favorites Flow', () => {
       popular: true,
     };
 
+    getMovieById.mockResolvedValue(testMovie);
     useMovieStore.setState({ movies: [testMovie] });
 
     // Toggle favorite
@@ -67,8 +71,7 @@ describe('Integration: Favorites Flow', () => {
   });
 
   it('handles favorite toggle error with rollback', async () => {
-    const { insertMovie } = require('../../src/database/queries');
-    insertMovie.mockRejectedValueOnce(new Error('Database error'));
+    const { insertMovie, getMovieById } = require('../../src/database/queries');
 
     const testMovie = {
       id: 1,
@@ -85,6 +88,8 @@ describe('Integration: Favorites Flow', () => {
       popular: true,
     };
 
+    getMovieById.mockResolvedValue(testMovie);
+    insertMovie.mockRejectedValueOnce(new Error('Database error'));
     useMovieStore.setState({ movies: [testMovie] });
 
     // Attempt to toggle favorite (will fail)

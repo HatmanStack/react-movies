@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, FlatList, Linking, Alert } from 'react-native';
 import { Text, IconButton, Divider } from 'react-native-paper';
 import { Image } from 'expo-image';
+import Animated from 'react-native-reanimated';
 import { useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { MovieDetails, VideoDetails, ReviewDetails } from '../../src/models/types';
@@ -211,18 +212,24 @@ export default function DetailsScreen(): React.JSX.Element {
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {/* Movie Header Section */}
       <View style={styles.header}>
-        {/* Poster Image */}
-        <Image
-          source={{ uri: posterUrl }}
-          style={styles.poster}
-          contentFit="cover"
-          transition={200}
-        />
+        {/* Poster Image with Shared Element Transition */}
+        <Animated.View
+          // @ts-expect-error - sharedTransitionTag is a valid prop but not in types yet
+          sharedTransitionTag={`movie-poster-${movieId}`}
+          style={styles.posterContainer}
+        >
+          <Image
+            source={{ uri: posterUrl }}
+            style={styles.poster}
+            contentFit="cover"
+            transition={200}
+          />
+        </Animated.View>
 
         {/* Favorite Button (Overlay) */}
         <IconButton
-          icon={movie.favorite ? 'star' : 'star-outline'}
-          iconColor={movie.favorite ? '#FFC107' : '#fff'}
+          icon={movie.favorite ? 'heart' : 'heart-outline'}
+          iconColor={movie.favorite ? '#E91E63' : '#fff'}
           size={32}
           style={styles.favoriteButton}
           onPress={handleFavoriteToggle}
@@ -321,6 +328,11 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: '100%',
     height: 500,
+  },
+  posterContainer: {
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
   },
   poster: {
     width: '100%',

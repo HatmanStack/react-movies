@@ -6,6 +6,17 @@
 process.env.EXPO_PUBLIC_TMDB_API_KEY = 'test_tmdb_api_key';
 process.env.EXPO_PUBLIC_YOUTUBE_API_KEY = 'test_youtube_api_key';
 
+// Mock Expo's import meta registry to fix "import outside test scope" errors
+global.__ExpoImportMetaRegistry = {
+  get: () => ({ url: 'file:///' }),
+  set: () => {},
+};
+
+// Mock structuredClone for Node environments that don't have it
+if (typeof global.structuredClone === 'undefined') {
+  global.structuredClone = (obj) => JSON.parse(JSON.stringify(obj));
+}
+
 // Mock expo-sqlite for database tests
 // In-memory mock implementation
 jest.mock('expo-sqlite', () => {
@@ -146,3 +157,73 @@ jest.mock('@react-native-community/netinfo', () => ({
     })
   ),
 }));
+
+// Mock @react-native-async-storage/async-storage
+jest.mock('@react-native-async-storage/async-storage', () => {
+  let storage = {};
+
+  return {
+    __esModule: true,
+    default: {
+      setItem: jest.fn((key, value) => {
+        storage[key] = value;
+        return Promise.resolve();
+      }),
+      getItem: jest.fn((key) => Promise.resolve(storage[key] || null)),
+      removeItem: jest.fn((key) => {
+        delete storage[key];
+        return Promise.resolve();
+      }),
+      clear: jest.fn(() => {
+        storage = {};
+        return Promise.resolve();
+      }),
+      getAllKeys: jest.fn(() => Promise.resolve(Object.keys(storage))),
+      multiGet: jest.fn((keys) =>
+        Promise.resolve(keys.map((key) => [key, storage[key] || null]))
+      ),
+      multiSet: jest.fn((keyValuePairs) => {
+        keyValuePairs.forEach(([key, value]) => {
+          storage[key] = value;
+        });
+        return Promise.resolve();
+      }),
+      multiRemove: jest.fn((keys) => {
+        keys.forEach((key) => delete storage[key]);
+        return Promise.resolve();
+      }),
+    },
+  };
+});
+
+// Mock react-native-reanimated
+jest.mock('react-native-reanimated', () => {
+  const Reanimated = require('react-native-reanimated/mock');
+  Reanimated.default.call = () => {};
+  return Reanimated;
+});
+
+// Mock expo-router
+jest.mock('expo-router', () => {
+  const React = require('react');
+  return {
+    useFocusEffect: jest.fn((callback) => {
+      React.useEffect(() => {
+        callback();
+      }, []);
+    }),
+    useRouter: jest.fn(() => ({
+      push: jest.fn(),
+      replace: jest.fn(),
+      back: jest.fn(),
+    })),
+    useLocalSearchParams: jest.fn(() => ({})),
+    useSegments: jest.fn(() => []),
+    usePathname: jest.fn(() => '/'),
+    Stack: {
+      Screen: ({ children }) => children,
+    },
+    Link: ({ children }) => children,
+    Redirect: ({ children }) => children,
+  };
+});

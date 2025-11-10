@@ -22,6 +22,7 @@ import { getDatabase } from '../../src/database/init';
 jest.mock('../../src/database/init');
 
 describe('Database Queries - Error Handling', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockDb: any;
 
   beforeEach(() => {
@@ -187,7 +188,7 @@ describe('Database Queries - Error Handling', () => {
         iso_3166_1: 'US',
         key: 'abc123',
         site: 'YouTube',
-        size: 1080,
+        size: '1080',
         type: 'Trailer',
       };
 
@@ -204,7 +205,7 @@ describe('Database Queries - Error Handling', () => {
         iso_3166_1: 'US',
         key: 'abc123',
         site: 'YouTube',
-        size: 1080,
+        size: '1080',
         type: 'Trailer',
       };
 

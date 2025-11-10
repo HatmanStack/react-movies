@@ -3,7 +3,14 @@ import { StyleSheet, Pressable, View } from 'react-native';
 import { Card, Text } from 'react-native-paper';
 import { Image } from 'expo-image';
 import { MaterialIcons } from '@expo/vector-icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { MovieDetails } from '../models/types';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 /**
  * MovieCard Props
@@ -17,37 +24,55 @@ export interface MovieCardProps {
  * MovieCard Component
  * Displays a movie poster card with title, rating, and favorite indicator
  * Replaces Android's PosterRecycler item layout
+ * Features smooth spring animation on press
  */
 const MovieCard: React.FC<MovieCardProps> = React.memo(({ movie, onPress }) => {
   const { id, title, poster_path, vote_average, favorite } = movie;
+
+  // Animation values
+  const scale = useSharedValue(1);
+
+  // Animated styles
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   // TMDb image base URL (w342 for optimal card size)
   const posterUrl = `https://image.tmdb.org/t/p/w342${poster_path}`;
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={() => onPress(id)}
-      style={({ pressed }) => [
-        styles.pressable,
-        pressed && styles.pressed,
-      ]}
+      onPressIn={() => {
+        scale.value = withSpring(0.95, { damping: 15, stiffness: 300 });
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+      }}
+      style={[styles.pressable, animatedStyle]}
     >
       <Card mode="elevated" style={styles.card}>
-        {/* Movie Poster */}
-        <Image
-          source={{ uri: posterUrl }}
-          style={styles.poster}
-          contentFit="cover"
-          transition={200}
-          cachePolicy="memory-disk"
-          placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
-          priority="high"
-        />
+        {/* Movie Poster with Shared Element Transition */}
+        <Animated.View
+          // @ts-expect-error - sharedTransitionTag is a valid prop but not in types yet
+          sharedTransitionTag={`movie-poster-${id}`}
+          style={styles.posterContainer}
+        >
+          <Image
+            source={{ uri: posterUrl }}
+            style={styles.poster}
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
+            placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+            priority="high"
+          />
+        </Animated.View>
 
-        {/* Favorite Indicator (Star Icon) */}
+        {/* Favorite Indicator (Heart Icon) */}
         {favorite && (
           <View style={styles.favoriteIndicator}>
-            <MaterialIcons name="star" size={24} color="#FFC107" />
+            <MaterialIcons name="favorite" size={24} color="#E91E63" />
           </View>
         )}
 
@@ -66,7 +91,7 @@ const MovieCard: React.FC<MovieCardProps> = React.memo(({ movie, onPress }) => {
           </View>
         </Card.Content>
       </Card>
-    </Pressable>
+    </AnimatedPressable>
   );
 });
 
@@ -77,17 +102,18 @@ const styles = StyleSheet.create({
     flex: 1,
     margin: 8,
   },
-  pressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.95 }],
-  },
   card: {
     borderRadius: 8,
     overflow: 'hidden',
   },
-  poster: {
+  posterContainer: {
     width: '100%',
     height: 240,
+    overflow: 'hidden',
+  },
+  poster: {
+    width: '100%',
+    height: '100%',
     backgroundColor: '#e0e0e0',
   },
   favoriteIndicator: {

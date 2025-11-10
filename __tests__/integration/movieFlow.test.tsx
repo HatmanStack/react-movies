@@ -11,12 +11,20 @@ import { useMovieStore } from '../../src/store/movieStore';
 import { useFilterStore } from '../../src/store/filterStore';
 
 // Mock Expo Router
-jest.mock('expo-router', () => ({
-  router: {
-    push: jest.fn(),
-  },
-  useLocalSearchParams: () => ({ id: '123' }),
-}));
+jest.mock('expo-router', () => {
+  const React = require('react');
+  return {
+    router: {
+      push: jest.fn(),
+    },
+    useLocalSearchParams: () => ({ id: '123' }),
+    useFocusEffect: jest.fn((callback) => {
+      React.useEffect(() => {
+        callback();
+      }, []);
+    }),
+  };
+});
 
 // Mock expo-image
 jest.mock('expo-image', () => ({
