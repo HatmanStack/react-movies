@@ -9,11 +9,10 @@
 [![](https://img.shields.io/badge/Zustand-454545?style=for-the-badge&logo=zustand&logoColor=white)](https://github.com/pmndrs/zustand)
 
 A cross-platform mobile app for discovering movies, powered by the TMDb API.
-This is a React Native (Expo) migration of the original Android app.
 
 ---
 
-![Movies App Screenshot](path/to/your/screenshot.png)
+![Movies App Banner](assets/images/banner.png)
 
 ---
 
