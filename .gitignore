@@ -9,3 +9,4 @@ expo-env.d.ts
 .expo/
 metro.config.js
 node_modules/
+dist/
