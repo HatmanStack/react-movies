@@ -10,7 +10,7 @@
 
 A cross-platform mobile app for discovering movies, powered by the TMDb API.
 
-![Try It](https://movies.hatstack.fun)
+[Try It](https://movies.hatstack.fun)
 
 ---
 
