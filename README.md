@@ -1,3 +1,5 @@
+<div align="center">
+
 # Movies App - React Native
 
 [![](https://img.shields.io/badge/React%20Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactnative.dev/)
@@ -14,6 +16,8 @@ This is a React Native (Expo) migration of the original Android app.
 ![Movies App Screenshot](path/to/your/screenshot.png)
 
 ---
+
+</div>
 
 ## Features
 
