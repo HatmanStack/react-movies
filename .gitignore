@@ -5,7 +5,6 @@
 expo-env.d.ts
 # @end expo-cli
 .env
-.eslintrc.js
 .expo/
 node_modules/
 dist/
