@@ -44,9 +44,11 @@ const MovieCard: React.FC<MovieCardProps> = React.memo(({ movie, onPress }) => {
     <AnimatedPressable
       onPress={() => onPress(id)}
       onPressIn={() => {
+        // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value is mutable by design
         scale.value = withSpring(0.95, { damping: 15, stiffness: 300 });
       }}
       onPressOut={() => {
+        // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value is mutable by design
         scale.value = withSpring(1, { damping: 15, stiffness: 300 });
       }}
       style={[styles.pressable, animatedStyle]}

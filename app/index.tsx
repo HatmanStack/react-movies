@@ -2,11 +2,13 @@ import React, { useEffect, useCallback, useMemo } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, useWindowDimensions } from 'react-native';
 import { FAB, Text, Banner } from 'react-native-paper';
 import { router, useFocusEffect } from 'expo-router';
+import Head from 'expo-router/head';
 import { useMovieStore } from '../src/store/movieStore';
 import { useFilterStore } from '../src/store/filterStore';
 import MovieCard from '../src/components/MovieCard';
 import LoadingSpinner from '../src/components/LoadingSpinner';
 import ErrorMessage from '../src/components/ErrorMessage';
+import { SEO_CONFIG, generateCanonicalUrl } from '../src/utils/seo';
 
 /**
  * Calculate number of columns based on screen width
@@ -173,6 +175,26 @@ export default function HomeScreen(): React.JSX.Element {
   // Show movie grid
   return (
     <View style={styles.container}>
+      {/* SEO Head */}
+      <Head>
+        <title>{SEO_CONFIG.defaultTitle}</title>
+        <meta name="description" content={SEO_CONFIG.defaultDescription} />
+        <link rel="canonical" href={generateCanonicalUrl('/')} />
+        <meta property="og:title" content={SEO_CONFIG.defaultTitle} />
+        <meta property="og:description" content={SEO_CONFIG.defaultDescription} />
+        <meta property="og:url" content={generateCanonicalUrl('/')} />
+        <meta
+          property="og:image"
+          content={`${SEO_CONFIG.siteUrl}${SEO_CONFIG.defaultImage}`}
+        />
+        <meta name="twitter:title" content={SEO_CONFIG.defaultTitle} />
+        <meta name="twitter:description" content={SEO_CONFIG.defaultDescription} />
+        <meta
+          name="twitter:image"
+          content={`${SEO_CONFIG.siteUrl}${SEO_CONFIG.defaultImage}`}
+        />
+      </Head>
+
       {/* Offline Banner */}
       {isOffline && (
         <Banner visible={true} icon="wifi-off">

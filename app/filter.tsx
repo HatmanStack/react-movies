@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { List, Switch, Text, Divider } from 'react-native-paper';
+import Head from 'expo-router/head';
 import { useFilterStore } from '../src/store/filterStore';
+import { generateTitle, generateCanonicalUrl } from '../src/utils/seo';
 
 /**
  * Filter Screen
@@ -19,6 +21,17 @@ export default function FilterScreen(): React.JSX.Element {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* SEO Head - noindex for modal pages */}
+      <Head>
+        <title>{generateTitle('Filter Movies')}</title>
+        <meta
+          name="description"
+          content="Filter movies by category - popular, top rated, or your favorites."
+        />
+        <link rel="canonical" href={generateCanonicalUrl('/filter')} />
+        <meta name="robots" content="noindex, follow" />
+      </Head>
+
       {/* Header Section */}
       <View style={styles.header}>
         <Text variant="headlineSmall" style={styles.title}>

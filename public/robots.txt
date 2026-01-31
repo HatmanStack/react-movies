@@ -1,0 +1,7 @@
+# React Movies - robots.txt
+User-agent: *
+Allow: /
+Disallow: /filter
+
+# Sitemap location
+Sitemap: https://christophergalliart.github.io/react-movies/sitemap.xml

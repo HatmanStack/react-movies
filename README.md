@@ -1,6 +1,6 @@
 <div align="center">
 
-# Movies App - React Native
+![Movies App Banner](public/og-image.jpg)
 
 [![](https://img.shields.io/badge/React%20Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactnative.dev/)
 [![](https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev/)
@@ -11,10 +11,6 @@
 A cross-platform mobile app for discovering movies, powered by the TMDb API.
 
 [Try It](https://movies.hatstack.fun)
-
----
-
-![Movies App Banner](assets/images/banner.png)
 
 ---
 

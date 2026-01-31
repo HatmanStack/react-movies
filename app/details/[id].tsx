@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, FlatList, Linking, Alert } from 'react-native';
 import { Text, IconButton, Divider } from 'react-native-paper';
 import { Image } from 'expo-image';
 import Animated from 'react-native-reanimated';
 import { useLocalSearchParams } from 'expo-router';
+import Head from 'expo-router/head';
 import { MaterialIcons } from '@expo/vector-icons';
 import { MovieDetails, VideoDetails, ReviewDetails } from '../../src/models/types';
 import { getMovieById, getTrailersForMovie, getReviewsForMovie, insertVideo, insertReview } from '../../src/database/queries';
@@ -14,6 +15,14 @@ import VideoCard from '../../src/components/VideoCard';
 import ReviewCard from '../../src/components/ReviewCard';
 import LoadingSpinner from '../../src/components/LoadingSpinner';
 import ErrorMessage from '../../src/components/ErrorMessage';
+import {
+  SEO_CONFIG,
+  generateTitle,
+  truncateDescription,
+  generateCanonicalUrl,
+  generateOgImageUrl,
+  generateMovieJsonLd,
+} from '../../src/utils/seo';
 
 /**
  * Movie Details Screen
@@ -33,6 +42,28 @@ export default function DetailsScreen(): React.JSX.Element {
 
   // Movie store actions
   const toggleFavorite = useMovieStore((state) => state.toggleFavorite);
+
+  // SEO metadata - memoized to avoid recalculating on every render
+  const seoData = useMemo(() => {
+    if (!movie) {
+      return {
+        title: generateTitle('Movie Details'),
+        description: SEO_CONFIG.defaultDescription,
+        canonicalUrl: generateCanonicalUrl(`/details/${movieId}`),
+        ogImage: `${SEO_CONFIG.siteUrl}${SEO_CONFIG.defaultImage}`,
+        jsonLd: null,
+      };
+    }
+    const releaseYear = movie.release_date?.split('-')[0] || '';
+    const titleWithYear = releaseYear ? `${movie.title} (${releaseYear})` : movie.title;
+    return {
+      title: generateTitle(movie.title),
+      description: truncateDescription(`${titleWithYear} - ${movie.overview}`),
+      canonicalUrl: generateCanonicalUrl(`/details/${movieId}`),
+      ogImage: generateOgImageUrl(movie.poster_path),
+      jsonLd: generateMovieJsonLd(movie),
+    };
+  }, [movie, movieId]);
 
   // Load movie details, trailers, and reviews
   const loadMovieDetails = useCallback(async () => {
@@ -210,6 +241,27 @@ export default function DetailsScreen(): React.JSX.Element {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      {/* Dynamic SEO Head */}
+      <Head>
+        <title>{seoData.title}</title>
+        <meta name="description" content={seoData.description} />
+        <link rel="canonical" href={seoData.canonicalUrl} />
+        <meta property="og:title" content={seoData.title} />
+        <meta property="og:description" content={seoData.description} />
+        <meta property="og:url" content={seoData.canonicalUrl} />
+        <meta property="og:image" content={seoData.ogImage} />
+        <meta property="og:type" content="video.movie" />
+        <meta name="twitter:title" content={seoData.title} />
+        <meta name="twitter:description" content={seoData.description} />
+        <meta name="twitter:image" content={seoData.ogImage} />
+        {seoData.jsonLd && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(seoData.jsonLd) }}
+          />
+        )}
+      </Head>
+
       {/* Movie Header Section */}
       <View style={styles.header}>
         {/* Poster Image with Shared Element Transition */}
