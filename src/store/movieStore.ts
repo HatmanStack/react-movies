@@ -2,8 +2,11 @@
  * Zustand Movie Store
  * Replaces LiveData functionality from Android app
  *
- * Note: Supports loading from multiple active filters simultaneously,
- * matching Android behavior (MainActivity.java:96-105 combines results).
+ * Features:
+ * - Batched database operations for performance
+ * - Request cancellation support
+ * - Multiple active filters simultaneously
+ * - Network status awareness
  */
 
 import { create } from 'zustand';
@@ -15,12 +18,14 @@ import {
   getTopRatedMovies,
   getFavoriteMovies,
   insertMovie,
+  insertMovies,
   getMovieById,
 } from '../database/queries';
-import { MovieFilter } from './filterStore';
+import { MovieFilter, FILTERS } from './filterStore';
 import { TMDbService } from '../api/tmdb';
-import { TMDbMovie } from '../api/types';
-import { formatError, logError } from '../utils/errorHandler';
+import { DEFAULT_FILTERS } from '../constants';
+import { formatError, logError, logInfo, isAbortError } from '../utils/errorHandler';
+import { mapTMDbToMovieDetails, mapTMDbMoviesToMovieDetails } from '../utils/mappers';
 
 /**
  * Movie Store interface
@@ -40,17 +45,17 @@ interface MovieStore {
   loadingMore: boolean;
 
   // Actions
-  loadMoviesFromFilters: (filters: MovieFilter[]) => Promise<void>;
+  loadMoviesFromFilters: (filters: MovieFilter[], signal?: AbortSignal) => Promise<void>;
   loadPopularMovies: () => Promise<void>;
   loadTopRatedMovies: () => Promise<void>;
   loadFavoriteMovies: () => Promise<void>;
   loadAllMovies: () => Promise<void>;
-  loadMoreMovies: () => Promise<void>;
+  loadMoreMovies: (signal?: AbortSignal) => Promise<void>;
   toggleFavorite: (movieId: number) => Promise<void>;
   refreshMovie: (movieId: number) => Promise<void>;
   clearError: () => void;
-  syncMoviesWithAPI: () => Promise<void>;
-  refreshMovies: () => Promise<void>;
+  syncMoviesWithAPI: (signal?: AbortSignal) => Promise<void>;
+  refreshMovies: (signal?: AbortSignal) => Promise<void>;
   setOfflineStatus: (isOffline: boolean) => void;
 }
 
@@ -73,41 +78,41 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
 
   /**
    * Load movies from multiple active filters
-   * Combines results from all specified filters, matching Android behavior
-   *
-   * Android equivalent: MainActivity.java:96-105
-   * - Checks each filter independently
-   * - Combines results with list.addAll()
-   *
-   * @param filters - Array of active filters to load from
+   * Combines results from all specified filters
    */
-  loadMoviesFromFilters: async (filters: MovieFilter[]) => {
+  loadMoviesFromFilters: async (filters: MovieFilter[], signal?: AbortSignal) => {
     set({ loading: true, error: null });
 
     try {
+      // Check if aborted
+      if (signal?.aborted) {
+        set({ loading: false });
+        return;
+      }
+
       const combinedMovies: MovieDetails[] = [];
-      const movieIds = new Set<number>(); // Track IDs to avoid duplicates
+      const movieIds = new Set<number>();
 
       // Load from each active filter and combine results
       for (const filter of filters) {
         let filterMovies: MovieDetails[] = [];
 
         switch (filter) {
-          case 'popular':
+          case FILTERS.POPULAR:
             filterMovies = await getPopularMovies();
             break;
-          case 'toprated':
+          case FILTERS.TOP_RATED:
             filterMovies = await getTopRatedMovies();
             break;
-          case 'favorites':
+          case FILTERS.FAVORITES:
             filterMovies = await getFavoriteMovies();
             break;
-          case 'all':
+          case FILTERS.ALL:
             filterMovies = await getAllMovies();
             break;
         }
 
-        // Add movies, avoiding duplicates (a movie can be both popular and top-rated)
+        // Add movies, avoiding duplicates
         for (const movie of filterMovies) {
           if (!movieIds.has(movie.id)) {
             movieIds.add(movie.id);
@@ -116,8 +121,15 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
         }
       }
 
-      set({ movies: combinedMovies, loading: false });
+      if (!signal?.aborted) {
+        set({ movies: combinedMovies, loading: false });
+      }
     } catch (error) {
+      if (isAbortError(error)) {
+        set({ loading: false });
+        return;
+      }
+
       logError(error, 'loadMoviesFromFilters');
       const formatted = formatError(error);
       set({ error: formatted.message, loading: false, movies: [] });
@@ -126,41 +138,37 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
 
   /**
    * Load popular movies
-   * Replaces: loadPopular() DAO query + LiveData update
    */
   loadPopularMovies: async () => {
-    await get().loadMoviesFromFilters(['popular']);
+    await get().loadMoviesFromFilters([FILTERS.POPULAR]);
   },
 
   /**
    * Load top-rated movies
-   * Replaces: loadTopRated() DAO query + LiveData update
    */
   loadTopRatedMovies: async () => {
-    await get().loadMoviesFromFilters(['toprated']);
+    await get().loadMoviesFromFilters([FILTERS.TOP_RATED]);
   },
 
   /**
    * Load favorite movies
-   * Replaces: loadFavorites() DAO query + LiveData update
    */
   loadFavoriteMovies: async () => {
-    await get().loadMoviesFromFilters(['favorites']);
+    await get().loadMoviesFromFilters([FILTERS.FAVORITES]);
   },
 
   /**
    * Load all movies
-   * Replaces: getAll() DAO query + LiveData update
    */
   loadAllMovies: async () => {
-    await get().loadMoviesFromFilters(['all']);
+    await get().loadMoviesFromFilters([FILTERS.ALL]);
   },
 
   /**
    * Load more movies (infinite scroll pagination)
    * Fetches next page of movies from API and appends to existing list
    */
-  loadMoreMovies: async () => {
+  loadMoreMovies: async (signal?: AbortSignal) => {
     const { loadingMore, syncing, isOffline, hasMorePopular, hasMoreTopRated, popularPage, topRatedPage } = get();
 
     // Don't load if already loading, syncing, offline, or no more pages
@@ -171,43 +179,29 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
     set({ loadingMore: true, error: null });
 
     try {
+      if (signal?.aborted) {
+        set({ loadingMore: false });
+        return;
+      }
+
       const { movies } = get();
       const movieIds = new Set(movies.map(m => m.id));
       const newMovies: MovieDetails[] = [];
 
-      // Helper function to map TMDb API response to MovieDetails
-      const mapTMDbToMovieDetails = (
-        movie: TMDbMovie,
-        popular: boolean,
-        toprated: boolean
-      ): MovieDetails => ({
-        id: movie.id,
-        title: movie.title || movie.name || '',
-        overview: movie.overview,
-        poster_path: movie.poster_path || '',
-        release_date: movie.release_date || movie.first_air_date || '',
-        vote_average: movie.vote_average,
-        vote_count: movie.vote_count,
-        popularity: movie.popularity,
-        original_language: movie.original_language,
-        favorite: false,
-        toprated,
-        popular,
-      });
-
       // Load next page of popular movies if available
       if (hasMorePopular) {
         const nextPopularPage = popularPage + 1;
-        const popularResponse = await TMDbService.getPopularMovies(nextPopularPage);
+        const popularResponse = await TMDbService.getPopularMovies(nextPopularPage, signal);
 
-        for (const movie of popularResponse.results) {
-          const mappedMovie = mapTMDbToMovieDetails(movie, true, false);
-          if (!movieIds.has(mappedMovie.id)) {
-            movieIds.add(mappedMovie.id);
-            newMovies.push(mappedMovie);
-            await insertMovie(mappedMovie);
-          }
-        }
+        const popularMovies = mapTMDbMoviesToMovieDetails(popularResponse.results, {
+          popular: true,
+          toprated: false,
+        });
+
+        // Filter out duplicates and add to new movies
+        const uniquePopular = popularMovies.filter(m => !movieIds.has(m.id));
+        uniquePopular.forEach(m => movieIds.add(m.id));
+        newMovies.push(...uniquePopular);
 
         set({
           popularPage: nextPopularPage,
@@ -216,18 +210,18 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
       }
 
       // Load next page of top-rated if available
-      if (hasMoreTopRated) {
+      if (hasMoreTopRated && !signal?.aborted) {
         const nextTopRatedPage = topRatedPage + 1;
-        const topRatedResponse = await TMDbService.getTopRatedTV(nextTopRatedPage);
+        const topRatedResponse = await TMDbService.getTopRatedTV(nextTopRatedPage, signal);
 
-        for (const movie of topRatedResponse.results) {
-          const mappedMovie = mapTMDbToMovieDetails(movie, false, true);
-          if (!movieIds.has(mappedMovie.id)) {
-            movieIds.add(mappedMovie.id);
-            newMovies.push(mappedMovie);
-            await insertMovie(mappedMovie);
-          }
-        }
+        const topRatedMovies = mapTMDbMoviesToMovieDetails(topRatedResponse.results, {
+          popular: false,
+          toprated: true,
+        });
+
+        // Filter out duplicates
+        const uniqueTopRated = topRatedMovies.filter(m => !movieIds.has(m.id));
+        newMovies.push(...uniqueTopRated);
 
         set({
           topRatedPage: nextTopRatedPage,
@@ -235,9 +229,21 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
         });
       }
 
+      // Batch insert new movies to database
+      if (newMovies.length > 0) {
+        await insertMovies(newMovies);
+      }
+
       // Append new movies to existing list
-      set({ movies: [...movies, ...newMovies], loadingMore: false });
+      if (!signal?.aborted) {
+        set({ movies: [...movies, ...newMovies], loadingMore: false });
+      }
     } catch (error) {
+      if (isAbortError(error)) {
+        set({ loadingMore: false });
+        return;
+      }
+
       logError(error, 'loadMoreMovies');
       const formatted = formatError(error);
       set({ error: `Failed to load more movies: ${formatted.message}`, loadingMore: false });
@@ -246,14 +252,9 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
 
   /**
    * Toggle favorite status for a movie
-   * Fetches movie from database, toggles favorite, and updates
-   * Works even if movie is not in current filtered list
-   *
-   * Replaces: toggle favorite → update database → LiveData notifies UI
    */
   toggleFavorite: async (movieId: number) => {
     try {
-      // Get the movie from the database (not from current filtered list)
       const movie = await getMovieById(movieId);
 
       if (!movie) {
@@ -285,7 +286,6 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
 
   /**
    * Refresh a single movie from database
-   * Useful after updating a movie's details
    */
   refreshMovie: async (movieId: number) => {
     try {
@@ -313,82 +313,77 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
   /**
    * Sync movies with TMDb API
    * Fetches popular movies and top-rated TV shows from API and stores in database
-   * Only runs if not already syncing (debouncing)
-   *
-   * Replaces Android's GetWebData.java data sync pattern
    */
-  syncMoviesWithAPI: async () => {
+  syncMoviesWithAPI: async (signal?: AbortSignal) => {
     const { syncing, isOffline } = get();
 
     // Skip sync if offline
     if (isOffline) {
-      console.log('Offline mode: skipping API sync, using cached data');
+      logInfo('Offline mode: skipping API sync, using cached data', 'syncMoviesWithAPI');
       set({ error: 'You are offline. Showing cached movies.' });
       return;
     }
 
     // Prevent duplicate syncs
     if (syncing) {
-      console.log('Sync already in progress, skipping...');
+      logInfo('Sync already in progress, skipping...', 'syncMoviesWithAPI');
       return;
     }
 
-    set({ syncing: true, loading: true, error: null, popularPage: 1, topRatedPage: 1, hasMorePopular: true, hasMoreTopRated: true });
+    set({
+      syncing: true,
+      loading: true,
+      error: null,
+      popularPage: 1,
+      topRatedPage: 1,
+      hasMorePopular: true,
+      hasMoreTopRated: true,
+    });
 
     try {
-      // Helper function to map TMDb API response to MovieDetails
-      const mapTMDbToMovieDetails = (
-        movie: TMDbMovie,
-        popular: boolean,
-        toprated: boolean
-      ): MovieDetails => ({
-        id: movie.id,
-        title: movie.title || movie.name || '',
-        overview: movie.overview,
-        poster_path: movie.poster_path || '',
-        release_date: movie.release_date || movie.first_air_date || '',
-        vote_average: movie.vote_average,
-        vote_count: movie.vote_count,
-        popularity: movie.popularity,
-        original_language: movie.original_language,
-        favorite: false, // Not favorited by default
-        toprated,
-        popular,
-      });
+      if (signal?.aborted) {
+        set({ syncing: false, loading: false });
+        return;
+      }
 
       // Fetch popular movies and top-rated TV shows in parallel
       const [popularResponse, topRatedResponse] = await Promise.all([
-        TMDbService.getPopularMovies(),
-        TMDbService.getTopRatedTV(),
+        TMDbService.getPopularMovies(1, signal),
+        TMDbService.getTopRatedTV(1, signal),
       ]);
 
-      // Map and insert popular movies
-      const popularMovies = popularResponse.results.map((movie) =>
-        mapTMDbToMovieDetails(movie, true, false)
-      );
+      if (signal?.aborted) {
+        set({ syncing: false, loading: false });
+        return;
+      }
 
-      // Map and insert top-rated TV shows
-      const topRatedMovies = topRatedResponse.results.map((movie) =>
-        mapTMDbToMovieDetails(movie, false, true)
-      );
+      // Map API responses to domain models
+      const popularMovies = mapTMDbMoviesToMovieDetails(popularResponse.results, {
+        popular: true,
+        toprated: false,
+      });
+
+      const topRatedMovies = mapTMDbMoviesToMovieDetails(topRatedResponse.results, {
+        popular: false,
+        toprated: true,
+      });
 
       // Combine all movies
       const allMovies = [...popularMovies, ...topRatedMovies];
 
-      // Insert into database (will replace existing movies with same ID)
-      for (const movie of allMovies) {
-        await insertMovie(movie);
-      }
+      // Batch insert into database
+      await insertMovies(allMovies);
 
       // Load movies from database and update store
-      const filters = get().movies.length > 0
-        ? ['popular', 'toprated'] as MovieFilter[]
-        : ['popular', 'toprated'] as MovieFilter[];
-
-      await get().loadMoviesFromFilters(filters);
+      await get().loadMoviesFromFilters(DEFAULT_FILTERS, signal);
 
       set({ syncing: false, loading: false });
     } catch (error) {
+      if (isAbortError(error)) {
+        set({ syncing: false, loading: false });
+        return;
+      }
+
       logError(error, 'syncMoviesWithAPI');
       const formatted = formatError(error);
       set({ error: `Failed to sync with API: ${formatted.message}`, syncing: false, loading: false });
@@ -397,83 +392,87 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
 
   /**
    * Refresh movies from TMDb API
-   * Similar to syncMoviesWithAPI but preserves user's favorite status
-   * Called by pull-to-refresh
+   * Preserves user's favorite status
    */
-  refreshMovies: async () => {
+  refreshMovies: async (signal?: AbortSignal) => {
     const { syncing, isOffline } = get();
 
     // Skip refresh if offline
     if (isOffline) {
-      console.log('Offline mode: cannot refresh, showing cached data');
+      logInfo('Offline mode: cannot refresh, showing cached data', 'refreshMovies');
       set({ error: 'Cannot refresh while offline. Showing cached movies.', loading: false });
       return;
     }
 
     // Prevent duplicate refreshes
     if (syncing) {
-      console.log('Refresh already in progress, skipping...');
+      logInfo('Refresh already in progress, skipping...', 'refreshMovies');
       return;
     }
 
-    set({ syncing: true, loading: true, error: null, popularPage: 1, topRatedPage: 1, hasMorePopular: true, hasMoreTopRated: true });
+    set({
+      syncing: true,
+      loading: true,
+      error: null,
+      popularPage: 1,
+      topRatedPage: 1,
+      hasMorePopular: true,
+      hasMoreTopRated: true,
+    });
 
     try {
+      if (signal?.aborted) {
+        set({ syncing: false, loading: false });
+        return;
+      }
+
       // Get current favorites to preserve them
       const currentFavorites = await getFavoriteMovies();
       const favoriteIds = new Set(currentFavorites.map((m) => m.id));
 
-      // Helper function to map TMDb API response to MovieDetails
-      const mapTMDbToMovieDetails = (
-        movie: TMDbMovie,
-        popular: boolean,
-        toprated: boolean
-      ): MovieDetails => ({
-        id: movie.id,
-        title: movie.title || movie.name || '',
-        overview: movie.overview,
-        poster_path: movie.poster_path || '',
-        release_date: movie.release_date || movie.first_air_date || '',
-        vote_average: movie.vote_average,
-        vote_count: movie.vote_count,
-        popularity: movie.popularity,
-        original_language: movie.original_language,
-        favorite: favoriteIds.has(movie.id), // Preserve favorite status
-        toprated,
-        popular,
-      });
-
       // Fetch fresh data from API
       const [popularResponse, topRatedResponse] = await Promise.all([
-        TMDbService.getPopularMovies(),
-        TMDbService.getTopRatedTV(),
+        TMDbService.getPopularMovies(1, signal),
+        TMDbService.getTopRatedTV(1, signal),
       ]);
 
-      // Map and insert movies (preserving favorites)
+      if (signal?.aborted) {
+        set({ syncing: false, loading: false });
+        return;
+      }
+
+      // Map and preserve favorites
       const popularMovies = popularResponse.results.map((movie) =>
-        mapTMDbToMovieDetails(movie, true, false)
+        mapTMDbToMovieDetails(movie, {
+          popular: true,
+          toprated: false,
+          favorite: favoriteIds.has(movie.id),
+        })
       );
 
       const topRatedMovies = topRatedResponse.results.map((movie) =>
-        mapTMDbToMovieDetails(movie, false, true)
+        mapTMDbToMovieDetails(movie, {
+          popular: false,
+          toprated: true,
+          favorite: favoriteIds.has(movie.id),
+        })
       );
 
       const allMovies = [...popularMovies, ...topRatedMovies];
 
-      // Update database
-      for (const movie of allMovies) {
-        await insertMovie(movie);
-      }
+      // Batch insert into database
+      await insertMovies(allMovies);
 
       // Reload movies from database
-      const filters = get().movies.length > 0
-        ? ['popular', 'toprated'] as MovieFilter[]
-        : ['popular', 'toprated'] as MovieFilter[];
-
-      await get().loadMoviesFromFilters(filters);
+      await get().loadMoviesFromFilters(DEFAULT_FILTERS, signal);
 
       set({ syncing: false, loading: false });
     } catch (error) {
+      if (isAbortError(error)) {
+        set({ syncing: false, loading: false });
+        return;
+      }
+
       logError(error, 'refreshMovies');
       const formatted = formatError(error);
       set({ error: `Failed to refresh movies: ${formatted.message}`, syncing: false, loading: false });
@@ -491,6 +490,7 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
 
 // Subscribe to NetInfo for network status updates
 NetInfo.addEventListener((state: NetInfoState) => {
-  const isOffline = !state.isConnected || !state.isInternetReachable;
+  // On web, isInternetReachable can be null initially - treat null as reachable
+  const isOffline = state.isConnected === false || state.isInternetReachable === false;
   useMovieStore.getState().setOfflineStatus(isOffline);
 });

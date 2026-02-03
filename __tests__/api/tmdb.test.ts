@@ -238,7 +238,7 @@ describe('TMDbService', () => {
     });
 
     it('should support different image sizes', () => {
-      const url = TMDbService.getPosterUrl('/abc.jpg', 'w500');
+      const url = TMDbService.getPosterUrl('/abc.jpg', 'LARGE');
       expect(url).toContain('/w500/abc.jpg');
     });
   });

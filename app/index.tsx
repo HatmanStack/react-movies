@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, useWindowDimensions } from 'react-native';
 import { FAB, Text, Banner } from 'react-native-paper';
 import { router, useFocusEffect } from 'expo-router';
@@ -9,30 +9,27 @@ import MovieCard from '../src/components/MovieCard';
 import LoadingSpinner from '../src/components/LoadingSpinner';
 import ErrorMessage from '../src/components/ErrorMessage';
 import { SEO_CONFIG, generateCanonicalUrl } from '../src/utils/seo';
+import { BREAKPOINTS, GRID_COLUMNS, COLORS, PAGINATION } from '../src/constants';
 
 /**
  * Calculate number of columns based on screen width
- * Responsive breakpoints:
- * - < 600px: 2 columns
- * - 600-900px: 3 columns
- * - 900-1200px: 4 columns
- * - 1200-1500px: 5 columns
- * - >= 1500px: 6 columns
  */
 const getNumColumns = (width: number): number => {
-  if (width >= 1500) return 6;
-  if (width >= 1200) return 5;
-  if (width >= 900) return 4;
-  if (width >= 600) return 3;
-  return 2;
+  if (width >= BREAKPOINTS.XL) return GRID_COLUMNS.XL;
+  if (width >= BREAKPOINTS.LG) return GRID_COLUMNS.LG;
+  if (width >= BREAKPOINTS.MD) return GRID_COLUMNS.MD;
+  if (width >= BREAKPOINTS.SM) return GRID_COLUMNS.SM;
+  return GRID_COLUMNS.XS;
 };
 
 /**
  * Home Screen - Main movie browsing screen
- * Displays a responsive grid of movies (2-6 columns) based on screen size and active filters
- * Replaces Android's MainActivity
+ * Displays a responsive grid of movies with filtering and infinite scroll
  */
 export default function HomeScreen(): React.JSX.Element {
+  // Ref to track mounted state and AbortController
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // Get screen dimensions for responsive layout
   const { width } = useWindowDimensions();
   const numColumns = useMemo(() => getNumColumns(width), [width]);
@@ -49,52 +46,71 @@ export default function HomeScreen(): React.JSX.Element {
   const loadMoreMovies = useMovieStore((state) => state.loadMoreMovies);
   const clearError = useMovieStore((state) => state.clearError);
 
-  // Subscribe to filter store state - individual selectors for reactivity
+  // Subscribe to filter store state
   const showPopular = useFilterStore((state) => state.showPopular);
   const showTopRated = useFilterStore((state) => state.showTopRated);
   const showFavorites = useFilterStore((state) => state.showFavorites);
   const getActiveFilters = useFilterStore((state) => state.getActiveFilters);
 
-  // Initial data sync on mount
+  // Initial data sync on mount with cleanup
   useEffect(() => {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     const initializeData = async () => {
       const activeFilters = getActiveFilters();
-      await loadMoviesFromFilters(activeFilters);
+      await loadMoviesFromFilters(activeFilters, controller.signal);
 
       // If no movies in database, sync with API
       const currentMovies = useMovieStore.getState().movies;
-      if (currentMovies.length === 0) {
-        await syncMoviesWithAPI();
+      if (currentMovies.length === 0 && !controller.signal.aborted) {
+        await syncMoviesWithAPI(controller.signal);
       }
     };
 
     initializeData();
+
+    // Cleanup: abort any pending requests
+    return () => {
+      controller.abort();
+      abortControllerRef.current = null;
+    };
   }, [loadMoviesFromFilters, getActiveFilters, syncMoviesWithAPI]);
 
   // Reload movies when filters change
   useEffect(() => {
+    const controller = new AbortController();
+
     const activeFilters = getActiveFilters();
-    loadMoviesFromFilters(activeFilters);
+    loadMoviesFromFilters(activeFilters, controller.signal);
+
+    return () => controller.abort();
   }, [showPopular, showTopRated, showFavorites, getActiveFilters, loadMoviesFromFilters]);
 
-  // Reload movies when screen comes into focus (e.g., navigating back from detail screen)
-  // This ensures favorite icons update after favoriting a movie
+  // Reload movies when screen comes into focus
   useFocusEffect(
     useCallback(() => {
+      const controller = new AbortController();
+
       const activeFilters = getActiveFilters();
-      loadMoviesFromFilters(activeFilters);
+      loadMoviesFromFilters(activeFilters, controller.signal);
+
+      return () => controller.abort();
     }, [getActiveFilters, loadMoviesFromFilters])
   );
 
-  // Handle pull-to-refresh
+  // Handle pull-to-refresh with cancellation
   const handleRefresh = useCallback(() => {
-    refreshMovies();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    refreshMovies(controller.signal);
   }, [refreshMovies]);
 
-  // Handle infinite scroll - load more movies
+  // Handle infinite scroll with cancellation
   const handleEndReached = useCallback(() => {
     if (!loadingMore && !loading) {
-      loadMoreMovies();
+      const controller = new AbortController();
+      loadMoreMovies(controller.signal);
     }
   }, [loadingMore, loading, loadMoreMovies]);
 
@@ -111,8 +127,9 @@ export default function HomeScreen(): React.JSX.Element {
   // Handle error retry
   const handleRetry = useCallback(() => {
     clearError();
+    const controller = new AbortController();
     const activeFilters = getActiveFilters();
-    loadMoviesFromFilters(activeFilters);
+    loadMoviesFromFilters(activeFilters, controller.signal);
   }, [clearError, loadMoviesFromFilters, getActiveFilters]);
 
   // Render movie card item
@@ -203,7 +220,7 @@ export default function HomeScreen(): React.JSX.Element {
       )}
 
       <FlatList
-        key={`grid-${numColumns}`} // Force re-render when columns change
+        key={`grid-${numColumns}`}
         data={movies}
         renderItem={renderMovieItem}
         keyExtractor={keyExtractor}
@@ -213,13 +230,13 @@ export default function HomeScreen(): React.JSX.Element {
           <RefreshControl
             refreshing={loading}
             onRefresh={handleRefresh}
-            colors={['#1976D2']}
-            tintColor="#1976D2"
+            colors={[COLORS.PRIMARY]}
+            tintColor={COLORS.PRIMARY}
           />
         }
         // Infinite scroll
         onEndReached={handleEndReached}
-        onEndReachedThreshold={0.5}
+        onEndReachedThreshold={PAGINATION.INFINITE_SCROLL_THRESHOLD}
         ListFooterComponent={
           loadingMore ? (
             <View style={styles.loadingMore}>
@@ -253,11 +270,11 @@ export default function HomeScreen(): React.JSX.Element {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.BACKGROUND,
   },
   gridContent: {
     padding: 8,
-    paddingBottom: 80, // Space for FAB
+    paddingBottom: 80,
   },
   emptyState: {
     flex: 1,
@@ -267,10 +284,10 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     marginBottom: 8,
-    color: '#666',
+    color: COLORS.TEXT_SECONDARY,
   },
   emptyMessage: {
-    color: '#999',
+    color: COLORS.TEXT_TERTIARY,
     textAlign: 'center',
   },
   fab: {
@@ -278,7 +295,7 @@ const styles = StyleSheet.create({
     margin: 16,
     right: 0,
     bottom: 0,
-    backgroundColor: '#1976D2',
+    backgroundColor: COLORS.PRIMARY,
   },
   loadingMore: {
     padding: 20,
@@ -286,6 +303,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingMoreText: {
-    color: '#1976D2',
+    color: COLORS.PRIMARY,
   },
 });

@@ -9,6 +9,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { MovieDetails } from '../models/types';
+import { ANIMATION, COLORS } from '../constants';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -45,19 +46,24 @@ const MovieCard: React.FC<MovieCardProps> = React.memo(({ movie, onPress }) => {
       onPress={() => onPress(id)}
       onPressIn={() => {
         // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value is mutable by design
-        scale.value = withSpring(0.95, { damping: 15, stiffness: 300 });
+        scale.value = withSpring(ANIMATION.SCALE_PRESSED, {
+          damping: ANIMATION.SPRING_DAMPING,
+          stiffness: ANIMATION.SPRING_STIFFNESS,
+        });
       }}
       onPressOut={() => {
         // eslint-disable-next-line react-hooks/immutability -- Reanimated shared value is mutable by design
-        scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+        scale.value = withSpring(ANIMATION.SCALE_NORMAL, {
+          damping: ANIMATION.SPRING_DAMPING,
+          stiffness: ANIMATION.SPRING_STIFFNESS,
+        });
       }}
       style={[styles.pressable, animatedStyle]}
     >
       <Card mode="elevated" style={styles.card}>
         {/* Movie Poster with Shared Element Transition */}
         <Animated.View
-          // @ts-expect-error - sharedTransitionTag is a valid prop but not in types yet
-          sharedTransitionTag={`movie-poster-${id}`}
+          {...({ sharedTransitionTag: `movie-poster-${id}` } as object)}
           style={styles.posterContainer}
         >
           <Image
@@ -74,7 +80,7 @@ const MovieCard: React.FC<MovieCardProps> = React.memo(({ movie, onPress }) => {
         {/* Favorite Indicator (Heart Icon) */}
         {favorite && (
           <View style={styles.favoriteIndicator}>
-            <MaterialIcons name="favorite" size={24} color="#E91E63" />
+            <MaterialIcons name="favorite" size={24} color={COLORS.FAVORITE} />
           </View>
         )}
 
@@ -86,7 +92,7 @@ const MovieCard: React.FC<MovieCardProps> = React.memo(({ movie, onPress }) => {
 
           {/* Rating */}
           <View style={styles.ratingContainer}>
-            <MaterialIcons name="star" size={16} color="#FFC107" />
+            <MaterialIcons name="star" size={16} color={COLORS.RATING} />
             <Text variant="bodySmall" style={styles.rating}>
               {vote_average.toFixed(1)}
             </Text>

@@ -1,6 +1,6 @@
 /**
  * TMDb API Service
- * Implements all TMDb API endpoints used in the application
+ * Implements all TMDb API endpoints with retry logic and request cancellation
  */
 
 import { APIError, NetworkError } from './errors';
@@ -9,28 +9,44 @@ import {
   TMDbVideosResponse,
   TMDbReviewsResponse,
 } from './types';
+import { API, IMAGE_SIZES, PLACEHOLDERS } from '../constants';
+import { withRetry } from '../utils/retry';
+import { logWarn, isAbortError } from '../utils/errorHandler';
+import {
+  TMDbDiscoverResponseSchema,
+  TMDbVideosResponseSchema,
+  TMDbReviewsResponseSchema,
+} from '../validation/schemas';
 
 /**
- * TMDb API configuration constants
+ * TMDb API configuration
  */
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 const TMDB_API_KEY = process.env.EXPO_PUBLIC_TMDB_API_KEY;
 
 /**
  * TMDb API Service class
- * Provides typed methods for all TMDb API endpoints
+ * Provides typed methods for all TMDb API endpoints with retry and cancellation support
  */
 export class TMDbService {
   /**
-   * Generic GET request handler with error handling
+   * Generic GET request handler with error handling and retry
+   *
+   * @param endpoint - API endpoint path
+   * @param params - Query parameters
+   * @param signal - AbortSignal for request cancellation
    */
   private static async get<T>(
     endpoint: string,
-    params: Record<string, string> = {}
+    params: Record<string, string> = {},
+    signal?: AbortSignal
   ): Promise<T> {
-    try {
-      const url = new URL(`${TMDB_BASE_URL}${endpoint}`);
+    const fetchWithRetry = async (): Promise<T> => {
+      // Check if aborted before starting
+      if (signal?.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
+      }
+
+      const url = new URL(`${API.TMDB_BASE_URL}${endpoint}`);
 
       // Add API key
       if (!TMDB_API_KEY) {
@@ -43,7 +59,7 @@ export class TMDbService {
         url.searchParams.append(key, value);
       });
 
-      const response = await fetch(url.toString());
+      const response = await fetch(url.toString(), { signal });
 
       if (!response.ok) {
         const errorMessage = `API request failed: ${response.statusText}`;
@@ -51,97 +67,161 @@ export class TMDbService {
       }
 
       return (await response.json()) as T;
+    };
+
+    try {
+      return await withRetry(fetchWithRetry, {
+        maxAttempts: 3,
+        baseDelay: 1000,
+        signal,
+        onRetry: (attempt, error) => {
+          logWarn(`TMDb API retry attempt ${attempt}`, 'TMDbService', {
+            endpoint,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        },
+      });
     } catch (error) {
+      // Don't wrap abort errors
+      if (isAbortError(error)) {
+        throw error;
+      }
+
       if (error instanceof APIError) {
         throw error;
       }
-      throw new NetworkError(`Network request failed: ${(error as Error).message}`);
+
+      throw new NetworkError(
+        `Network request failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
   /**
    * Get popular movies
    * Endpoint: /discover/movie
+   *
    * @param page - Page number (default: 1)
+   * @param signal - AbortSignal for cancellation
    * @returns Promise<TMDbDiscoverResponse>
    */
-  static async getPopularMovies(page: number = 1): Promise<TMDbDiscoverResponse> {
-    return this.get<TMDbDiscoverResponse>('/discover/movie', {
-      page: page.toString(),
-      sort_by: 'popularity.desc',
-    });
+  static async getPopularMovies(
+    page: number = API.DEFAULT_PAGE,
+    signal?: AbortSignal
+  ): Promise<TMDbDiscoverResponse> {
+    const data = await this.get<unknown>(
+      '/discover/movie',
+      {
+        page: page.toString(),
+        sort_by: 'popularity.desc',
+      },
+      signal
+    );
+    // Validate and cast - Zod schemas are more permissive with optionals
+    TMDbDiscoverResponseSchema.parse(data);
+    return data as TMDbDiscoverResponse;
   }
 
   /**
    * Get top-rated TV shows
    * Endpoint: /discover/tv
+   *
    * @param page - Page number (default: 1)
+   * @param signal - AbortSignal for cancellation
    * @returns Promise<TMDbDiscoverResponse>
    */
-  static async getTopRatedTV(page: number = 1): Promise<TMDbDiscoverResponse> {
-    return this.get<TMDbDiscoverResponse>('/discover/tv', {
-      page: page.toString(),
-      sort_by: 'vote_average.desc',
-      'vote_count.gte': '100', // Only include shows with at least 100 votes
-    });
+  static async getTopRatedTV(
+    page: number = API.DEFAULT_PAGE,
+    signal?: AbortSignal
+  ): Promise<TMDbDiscoverResponse> {
+    const data = await this.get<unknown>(
+      '/discover/tv',
+      {
+        page: page.toString(),
+        sort_by: 'vote_average.desc',
+        'vote_count.gte': API.MIN_VOTE_COUNT.toString(),
+      },
+      signal
+    );
+    TMDbDiscoverResponseSchema.parse(data);
+    return data as TMDbDiscoverResponse;
   }
 
   /**
    * Get videos/trailers for a specific movie
    * Endpoint: /movie/{movieId}/videos
+   *
    * @param movieId - TMDb movie ID
+   * @param signal - AbortSignal for cancellation
    * @returns Promise<TMDbVideosResponse>
    */
-  static async getMovieVideos(movieId: number): Promise<TMDbVideosResponse> {
-    return this.get<TMDbVideosResponse>(`/movie/${movieId}/videos`);
+  static async getMovieVideos(
+    movieId: number,
+    signal?: AbortSignal
+  ): Promise<TMDbVideosResponse> {
+    const data = await this.get<unknown>(
+      `/movie/${movieId}/videos`,
+      {},
+      signal
+    );
+    TMDbVideosResponseSchema.parse(data);
+    return data as TMDbVideosResponse;
   }
 
   /**
    * Get reviews for a specific movie
    * Endpoint: /movie/{movieId}/reviews
+   *
    * @param movieId - TMDb movie ID
    * @param page - Page number (default: 1)
+   * @param signal - AbortSignal for cancellation
    * @returns Promise<TMDbReviewsResponse>
    */
   static async getMovieReviews(
     movieId: number,
-    page: number = 1
+    page: number = API.DEFAULT_PAGE,
+    signal?: AbortSignal
   ): Promise<TMDbReviewsResponse> {
-    return this.get<TMDbReviewsResponse>(`/movie/${movieId}/reviews`, {
-      page: page.toString(),
-    });
+    const data = await this.get<unknown>(
+      `/movie/${movieId}/reviews`,
+      { page: page.toString() },
+      signal
+    );
+    TMDbReviewsResponseSchema.parse(data);
+    return data as TMDbReviewsResponse;
   }
 
   /**
    * Construct full poster image URL from poster_path
+   *
    * @param posterPath - Poster path from TMDb API (e.g., '/abc123.jpg')
-   * @param size - Image size ('w185', 'w342', 'w500', 'w780', 'original')
+   * @param size - Image size
    * @returns Full image URL or placeholder if posterPath is null
    */
   static getPosterUrl(
     posterPath: string | null,
-    size: 'w185' | 'w342' | 'w500' | 'w780' | 'original' = 'w342'
+    size: keyof typeof IMAGE_SIZES.POSTER = 'MEDIUM'
   ): string {
     if (!posterPath) {
-      // Return placeholder image URL when poster is not available
-      return 'https://via.placeholder.com/342x513?text=No+Image';
+      return PLACEHOLDERS.POSTER;
     }
-    return `${TMDB_IMAGE_BASE_URL}/${size}${posterPath}`;
+    return `${API.TMDB_IMAGE_BASE_URL}/${IMAGE_SIZES.POSTER[size]}${posterPath}`;
   }
 
   /**
    * Construct full backdrop image URL from backdrop_path
+   *
    * @param backdropPath - Backdrop path from TMDb API
-   * @param size - Image size ('w300', 'w780', 'w1280', 'original')
+   * @param size - Image size
    * @returns Full image URL or placeholder if backdropPath is null
    */
   static getBackdropUrl(
     backdropPath: string | null,
-    size: 'w300' | 'w780' | 'w1280' | 'original' = 'w780'
+    size: keyof typeof IMAGE_SIZES.BACKDROP = 'MEDIUM'
   ): string {
     if (!backdropPath) {
-      return 'https://via.placeholder.com/780x439?text=No+Image';
+      return PLACEHOLDERS.BACKDROP;
     }
-    return `${TMDB_IMAGE_BASE_URL}/${size}${backdropPath}`;
+    return `${API.TMDB_IMAGE_BASE_URL}/${IMAGE_SIZES.BACKDROP[size]}${backdropPath}`;
   }
 }

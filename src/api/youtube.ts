@@ -1,14 +1,17 @@
 /**
  * YouTube Data API v3 Service
  * Provides methods to fetch video thumbnails and construct YouTube URLs
+ * Includes retry logic and request cancellation support
  */
 
 import { YouTubeVideoResponse } from './types';
+import { API } from '../constants';
+import { withRetry } from '../utils/retry';
+import { logWarn, isAbortError } from '../utils/errorHandler';
 
 /**
- * YouTube API configuration constants
+ * YouTube API configuration
  */
-const YOUTUBE_BASE_URL = 'https://www.googleapis.com/youtube/v3';
 const YOUTUBE_API_KEY = process.env.EXPO_PUBLIC_YOUTUBE_API_KEY;
 
 /**
@@ -21,25 +24,40 @@ export class YouTubeService {
    * Falls back to default YouTube thumbnail if API call fails
    *
    * @param videoKey - YouTube video ID/key
+   * @param signal - AbortSignal for request cancellation
    * @returns Promise<string> - Thumbnail URL
    */
-  static async getVideoThumbnail(videoKey: string): Promise<string> {
-    try {
-      if (!YOUTUBE_API_KEY) {
-        console.warn('YouTube API key not configured, using default thumbnail');
-        return this.getDefaultThumbnail(videoKey);
+  static async getVideoThumbnail(
+    videoKey: string,
+    signal?: AbortSignal
+  ): Promise<string> {
+    // Validate video key
+    if (!videoKey || !/^[a-zA-Z0-9_-]{11}$/.test(videoKey)) {
+      logWarn('Invalid YouTube video key', 'YouTubeService', { videoKey });
+      return this.getDefaultThumbnail(videoKey);
+    }
+
+    // If no API key, use default thumbnail directly
+    if (!YOUTUBE_API_KEY) {
+      logWarn('YouTube API key not configured, using default thumbnail', 'YouTubeService');
+      return this.getDefaultThumbnail(videoKey);
+    }
+
+    const fetchThumbnail = async (): Promise<string> => {
+      // Check if aborted
+      if (signal?.aborted) {
+        throw new DOMException('Aborted', 'AbortError');
       }
 
-      const url = new URL(`${YOUTUBE_BASE_URL}/videos`);
+      const url = new URL(`${API.YOUTUBE_BASE_URL}/videos`);
       url.searchParams.append('id', videoKey);
       url.searchParams.append('key', YOUTUBE_API_KEY);
       url.searchParams.append('part', 'snippet');
 
-      const response = await fetch(url.toString());
+      const response = await fetch(url.toString(), { signal });
 
       if (!response.ok) {
-        console.warn(`YouTube API request failed: ${response.statusText}`);
-        return this.getDefaultThumbnail(videoKey);
+        throw new Error(`YouTube API request failed: ${response.statusText}`);
       }
 
       const data = (await response.json()) as YouTubeVideoResponse;
@@ -58,10 +76,85 @@ export class YouTubeService {
       }
 
       return this.getDefaultThumbnail(videoKey);
+    };
+
+    try {
+      return await withRetry(fetchThumbnail, {
+        maxAttempts: 2, // Lower retry count for thumbnails
+        baseDelay: 500,
+        signal,
+        onRetry: (attempt, error) => {
+          logWarn(`YouTube API retry attempt ${attempt}`, 'YouTubeService', {
+            videoKey,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        },
+      });
     } catch (error) {
-      console.warn('YouTube API error, using default thumbnail:', error);
+      // Don't log abort errors as warnings
+      if (!isAbortError(error)) {
+        logWarn('YouTube API error, using default thumbnail', 'YouTubeService', {
+          videoKey,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
       return this.getDefaultThumbnail(videoKey);
     }
+  }
+
+  /**
+   * Batch fetch thumbnails for multiple videos
+   * More efficient than individual calls
+   *
+   * @param videoKeys - Array of YouTube video IDs
+   * @param signal - AbortSignal for request cancellation
+   * @returns Promise<Map<string, string>> - Map of videoKey to thumbnail URL
+   */
+  static async getVideoThumbnails(
+    videoKeys: string[],
+    signal?: AbortSignal
+  ): Promise<Map<string, string>> {
+    const results = new Map<string, string>();
+
+    if (videoKeys.length === 0) {
+      return results;
+    }
+
+    // Filter valid keys
+    const validKeys = videoKeys.filter(key => /^[a-zA-Z0-9_-]{11}$/.test(key));
+    const invalidKeys = videoKeys.filter(key => !/^[a-zA-Z0-9_-]{11}$/.test(key));
+
+    // Add default thumbnails for invalid keys
+    invalidKeys.forEach(key => {
+      results.set(key, this.getDefaultThumbnail(key));
+    });
+
+    if (validKeys.length === 0 || !YOUTUBE_API_KEY) {
+      // No valid keys or no API key - use defaults
+      validKeys.forEach(key => {
+        results.set(key, this.getDefaultThumbnail(key));
+      });
+      return results;
+    }
+
+    // Fetch all thumbnails in parallel
+    const fetchPromises = validKeys.map(async key => {
+      const thumbnail = await this.getVideoThumbnail(key, signal);
+      return { key, thumbnail };
+    });
+
+    const settled = await Promise.allSettled(fetchPromises);
+
+    settled.forEach((result, index) => {
+      const key = validKeys[index];
+      if (result.status === 'fulfilled') {
+        results.set(key, result.value.thumbnail);
+      } else {
+        results.set(key, this.getDefaultThumbnail(key));
+      }
+    });
+
+    return results;
   }
 
   /**
@@ -72,24 +165,30 @@ export class YouTubeService {
    * @returns Default thumbnail URL
    */
   static getDefaultThumbnail(videoKey: string): string {
-    return `https://img.youtube.com/vi/${videoKey}/hqdefault.jpg`;
+    // Sanitize video key to prevent URL injection
+    const sanitized = encodeURIComponent(videoKey);
+    return `${API.YOUTUBE_THUMBNAIL_BASE}/${sanitized}/hqdefault.jpg`;
   }
 
   /**
    * Construct YouTube watch URL for a video
+   *
    * @param videoKey - YouTube video ID/key
    * @returns Full YouTube watch URL
    */
   static getWatchUrl(videoKey: string): string {
-    return `https://www.youtube.com/watch?v=${videoKey}`;
+    const sanitized = encodeURIComponent(videoKey);
+    return `https://www.youtube.com/watch?v=${sanitized}`;
   }
 
   /**
    * Construct YouTube embed URL for WebView playback
+   *
    * @param videoKey - YouTube video ID/key
    * @returns YouTube embed URL for iframe/WebView
    */
   static getEmbedUrl(videoKey: string): string {
-    return `https://www.youtube.com/embed/${videoKey}`;
+    const sanitized = encodeURIComponent(videoKey);
+    return `https://www.youtube.com/embed/${sanitized}`;
   }
 }
