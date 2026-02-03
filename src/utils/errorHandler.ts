@@ -1,14 +1,19 @@
 /**
- * Centralized Error Handling Utility
- * Provides consistent error handling across the application
+ * Centralized Error Handling & Logging Utility
+ * Provides consistent error handling, structured logging, and production observability
  */
 
 import { APIError, NetworkError, DatabaseError } from '../api/errors';
+
+// ============================================================================
+// ERROR SEVERITY & FORMATTING
+// ============================================================================
 
 /**
  * Error severity levels
  */
 export enum ErrorSeverity {
+  DEBUG = 'debug',
   INFO = 'info',
   WARNING = 'warning',
   ERROR = 'error',
@@ -24,6 +29,169 @@ export interface FormattedError {
   severity: ErrorSeverity;
   retryable: boolean;
 }
+
+/**
+ * Structured log entry
+ */
+interface LogEntry {
+  timestamp: string;
+  level: ErrorSeverity;
+  context?: string;
+  message: string;
+  data?: Record<string, unknown>;
+  error?: unknown;
+}
+
+// ============================================================================
+// ERROR TRACKING INITIALIZATION
+// ============================================================================
+
+/**
+ * Error tracking service interface (Sentry-compatible)
+ */
+interface ErrorTracker {
+  captureException: (error: unknown, extra?: Record<string, unknown>) => void;
+  captureMessage: (message: string, level: ErrorSeverity, extra?: Record<string, unknown>) => void;
+  setUser: (user: { id?: string; email?: string; username?: string } | null) => void;
+  addBreadcrumb: (breadcrumb: { category: string; message: string; level?: string }) => void;
+}
+
+let errorTracker: ErrorTracker | null = null;
+
+/**
+ * Initialize error tracking service
+ * Call this at app startup with your Sentry or error tracking instance
+ *
+ * @example
+ * ```typescript
+ * import * as Sentry from '@sentry/react-native';
+ * initializeErrorTracking({
+ *   captureException: Sentry.captureException,
+ *   captureMessage: Sentry.captureMessage,
+ *   setUser: Sentry.setUser,
+ *   addBreadcrumb: Sentry.addBreadcrumb,
+ * });
+ * ```
+ */
+export function initializeErrorTracking(tracker: ErrorTracker): void {
+  errorTracker = tracker;
+}
+
+// ============================================================================
+// STRUCTURED LOGGING
+// ============================================================================
+
+/**
+ * Create a structured log entry
+ */
+function createLogEntry(
+  level: ErrorSeverity,
+  message: string,
+  context?: string,
+  data?: Record<string, unknown>,
+  error?: unknown
+): LogEntry {
+  return {
+    timestamp: new Date().toISOString(),
+    level,
+    context,
+    message,
+    data,
+    error,
+  };
+}
+
+/**
+ * Output log entry to console (development) and error tracking (production)
+ */
+function outputLog(entry: LogEntry): void {
+  // Development: Console logging
+  if (__DEV__) {
+    const prefix = `[${entry.level.toUpperCase()}]${entry.context ? ` [${entry.context}]` : ''}`;
+    const logFn = entry.level === ErrorSeverity.ERROR || entry.level === ErrorSeverity.CRITICAL
+      ? console.error
+      : entry.level === ErrorSeverity.WARNING
+        ? console.warn
+        : entry.level === ErrorSeverity.DEBUG
+          ? console.debug
+          : console.log;
+
+    logFn(prefix, entry.message, entry.data ?? '', entry.error ?? '');
+  }
+
+  // Production: Send to error tracking service
+  if (!__DEV__ && errorTracker) {
+    if (entry.error) {
+      errorTracker.captureException(entry.error, {
+        context: entry.context,
+        message: entry.message,
+        ...entry.data,
+      });
+    } else if (entry.level === ErrorSeverity.ERROR || entry.level === ErrorSeverity.CRITICAL) {
+      errorTracker.captureMessage(entry.message, entry.level, {
+        context: entry.context,
+        ...entry.data,
+      });
+    } else {
+      // Add breadcrumb for non-error logs
+      errorTracker.addBreadcrumb({
+        category: entry.context ?? 'app',
+        message: entry.message,
+        level: entry.level,
+      });
+    }
+  }
+}
+
+/**
+ * Log debug message
+ * Only outputs in development
+ */
+export function logDebug(message: string, context?: string, data?: Record<string, unknown>): void {
+  if (__DEV__) {
+    const entry = createLogEntry(ErrorSeverity.DEBUG, message, context, data);
+    outputLog(entry);
+  }
+}
+
+/**
+ * Log informational message
+ */
+export function logInfo(message: string, context?: string, data?: Record<string, unknown>): void {
+  const entry = createLogEntry(ErrorSeverity.INFO, message, context, data);
+  outputLog(entry);
+}
+
+/**
+ * Log warning message
+ */
+export function logWarn(message: string, context?: string, data?: Record<string, unknown>): void {
+  const entry = createLogEntry(ErrorSeverity.WARNING, message, context, data);
+  outputLog(entry);
+}
+
+/**
+ * Log error with optional context
+ * In production, sends to error tracking service
+ *
+ * @param error - Error to log
+ * @param context - Additional context about where error occurred
+ */
+export function logError(error: unknown, context?: string): void {
+  const formatted = formatError(error);
+  const entry = createLogEntry(
+    formatted.severity,
+    formatted.message,
+    context,
+    { title: formatted.title, retryable: formatted.retryable },
+    error
+  );
+  outputLog(entry);
+}
+
+// ============================================================================
+// ERROR FORMATTING
+// ============================================================================
 
 /**
  * Format error for user-friendly display
@@ -111,30 +279,9 @@ function getAPIErrorMessage(error: APIError): string {
   }
 }
 
-/**
- * Log error for debugging
- * In production, this could send to error tracking service (e.g., Sentry)
- *
- * @param error - Error to log
- * @param context - Additional context about where error occurred
- */
-export function logError(error: unknown, context?: string): void {
-  const formatted = formatError(error);
-
-  // Console logging for development
-  if (__DEV__) {
-    console.error('[ErrorHandler]', {
-      context,
-      severity: formatted.severity,
-      title: formatted.title,
-      message: formatted.message,
-      originalError: error,
-    });
-  }
-
-  // In production, send to error tracking service
-  // Example: Sentry.captureException(error, { extra: { context, formatted } });
-}
+// ============================================================================
+// ERROR UTILITIES
+// ============================================================================
 
 /**
  * Check if error is retryable
@@ -158,9 +305,51 @@ export function isNetworkError(error: unknown): boolean {
       message.includes('network') ||
       message.includes('connection') ||
       message.includes('timeout') ||
-      message.includes('fetch failed')
+      message.includes('fetch failed') ||
+      message.includes('aborted')
     );
   }
 
   return false;
+}
+
+/**
+ * Check if error is due to rate limiting
+ */
+export function isRateLimitError(error: unknown): boolean {
+  return error instanceof APIError && error.statusCode === 429;
+}
+
+/**
+ * Check if error is a cancellation (AbortError)
+ */
+export function isAbortError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === 'AbortError') {
+    return true;
+  }
+  if (error instanceof Error) {
+    return error.name === 'AbortError' || error.message.includes('aborted');
+  }
+  return false;
+}
+
+/**
+ * Safely get error message from unknown error type
+ */
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  return 'An unknown error occurred';
+}
+
+/**
+ * Create a user-facing error message from an error
+ */
+export function toUserMessage(error: unknown): string {
+  const formatted = formatError(error);
+  return formatted.message;
 }
