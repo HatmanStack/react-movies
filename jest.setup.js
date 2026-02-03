@@ -119,8 +119,10 @@ jest.mock('expo-sqlite', () => {
         return table;
       } else if (sql.includes('FROM video_details')) {
         const table = tables.get('video_details') || [];
-        if (sql.includes("WHERE type = 'Trailer'"))
-          return table.filter((row) => row.id === params[0] && row.type === 'Trailer');
+        // Handle WHERE type = ? AND id = ? (params: [type, movieId])
+        if (sql.includes('WHERE type = ?') && sql.includes('AND id = ?')) {
+          return table.filter((row) => row.type === params[0] && row.id === params[1]);
+        }
         if (sql.includes('WHERE id = ?')) return table.filter((row) => row.id === params[0]);
         return table;
       } else if (sql.includes('FROM review_details')) {

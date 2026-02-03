@@ -78,10 +78,12 @@ describe('YouTubeService', () => {
         'https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg'
       );
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('youtube/v3/videos')
+        expect.stringContaining('youtube/v3/videos'),
+        expect.anything()
       );
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('id=dQw4w9WgXcQ')
+        expect.stringContaining('id=dQw4w9WgXcQ'),
+        expect.anything()
       );
     });
 
@@ -94,7 +96,7 @@ describe('YouTubeService', () => {
           {
             kind: 'youtube#video',
             etag: 'test-etag',
-            id: 'test123',
+            id: 'test1234567', // Valid 11-char key
             snippet: {
               publishedAt: '2020-01-01T00:00:00Z',
               channelId: 'test-channel',
@@ -102,17 +104,17 @@ describe('YouTubeService', () => {
               description: 'Test',
               thumbnails: {
                 default: {
-                  url: 'https://i.ytimg.com/vi/test123/default.jpg',
+                  url: 'https://i.ytimg.com/vi/test1234567/default.jpg',
                   width: 120,
                   height: 90,
                 },
                 medium: {
-                  url: 'https://i.ytimg.com/vi/test123/mqdefault.jpg',
+                  url: 'https://i.ytimg.com/vi/test1234567/mqdefault.jpg',
                   width: 320,
                   height: 180,
                 },
                 high: {
-                  url: 'https://i.ytimg.com/vi/test123/hqdefault.jpg',
+                  url: 'https://i.ytimg.com/vi/test1234567/hqdefault.jpg',
                   width: 480,
                   height: 360,
                 },
@@ -129,9 +131,9 @@ describe('YouTubeService', () => {
         json: async () => mockResponse,
       } as Response);
 
-      const thumbnail = await YouTubeService.getVideoThumbnail('test123');
+      const thumbnail = await YouTubeService.getVideoThumbnail('test1234567');
 
-      expect(thumbnail).toBe('https://i.ytimg.com/vi/test123/hqdefault.jpg');
+      expect(thumbnail).toBe('https://i.ytimg.com/vi/test1234567/hqdefault.jpg');
     });
 
     it('should fallback to default thumbnail on API failure', async () => {
@@ -172,10 +174,10 @@ describe('YouTubeService', () => {
         json: async () => mockResponse,
       } as Response);
 
-      const thumbnail = await YouTubeService.getVideoThumbnail('invalid123');
+      const thumbnail = await YouTubeService.getVideoThumbnail('notfound1234');
 
       expect(thumbnail).toBe(
-        'https://img.youtube.com/vi/invalid123/hqdefault.jpg'
+        'https://img.youtube.com/vi/notfound1234/hqdefault.jpg'
       );
     });
   });

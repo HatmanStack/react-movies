@@ -5,7 +5,7 @@
 
 import { useMovieStore } from '../../src/store/movieStore';
 import { TMDbService } from '../../src/api/tmdb';
-import { insertMovie, getFavoriteMovies } from '../../src/database/queries';
+import { insertMovie, insertMovies, getFavoriteMovies } from '../../src/database/queries';
 
 // Mock database queries
 jest.mock('../../src/database/queries', () => ({
@@ -14,6 +14,7 @@ jest.mock('../../src/database/queries', () => ({
   getTopRatedMovies: jest.fn().mockResolvedValue([]),
   getFavoriteMovies: jest.fn().mockResolvedValue([]),
   insertMovie: jest.fn().mockResolvedValue(undefined),
+  insertMovies: jest.fn().mockResolvedValue(undefined),
   getMovieById: jest.fn(),
 }));
 
@@ -31,8 +32,14 @@ jest.mock('@react-native-community/netinfo', () => ({
 }));
 
 describe('movieStore - syncMoviesWithAPI', () => {
+  const originalConsoleError = console.error;
+  const originalConsoleWarn = console.warn;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    // Suppress console output from error handler
+    console.error = jest.fn();
+    console.warn = jest.fn();
     useMovieStore.setState({
       movies: [],
       loading: false,
@@ -40,6 +47,11 @@ describe('movieStore - syncMoviesWithAPI', () => {
       syncing: false,
       isOffline: false,
     });
+  });
+
+  afterEach(() => {
+    console.error = originalConsoleError;
+    console.warn = originalConsoleWarn;
   });
 
   it('should skip sync when offline', async () => {
@@ -50,7 +62,12 @@ describe('movieStore - syncMoviesWithAPI', () => {
 
     await useMovieStore.getState().syncMoviesWithAPI();
 
-    expect(consoleSpy).toHaveBeenCalledWith('Offline mode: skipping API sync, using cached data');
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[INFO]'),
+      expect.stringContaining('Offline mode: skipping API sync'),
+      expect.anything(),
+      expect.anything()
+    );
     expect(useMovieStore.getState().error).toBe('You are offline. Showing cached movies.');
     expect(TMDbService.getPopularMovies).not.toHaveBeenCalled();
 
@@ -65,7 +82,12 @@ describe('movieStore - syncMoviesWithAPI', () => {
 
     await useMovieStore.getState().syncMoviesWithAPI();
 
-    expect(consoleSpy).toHaveBeenCalledWith('Sync already in progress, skipping...');
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[INFO]'),
+      expect.stringContaining('Sync already in progress'),
+      expect.anything(),
+      expect.anything()
+    );
     expect(TMDbService.getPopularMovies).not.toHaveBeenCalled();
 
     consoleSpy.mockRestore();
@@ -122,31 +144,39 @@ describe('movieStore - syncMoviesWithAPI', () => {
 
     await useMovieStore.getState().syncMoviesWithAPI();
 
-    expect(insertMovie).toHaveBeenCalledTimes(2);
-    expect(insertMovie).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 1,
-        title: 'Popular Movie',
-        popular: true,
-        toprated: false,
-        favorite: false,
-      })
-    );
-    expect(insertMovie).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 2,
-        title: 'Top Rated TV',
-        popular: false,
-        toprated: true,
-        favorite: false,
-      })
+    // Batch insert should be called with all movies
+    expect(insertMovies).toHaveBeenCalled();
+    const insertedMovies = (insertMovies as jest.Mock).mock.calls[0][0];
+    expect(insertedMovies).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 1,
+          title: 'Popular Movie',
+          popular: true,
+          toprated: false,
+          favorite: false,
+        }),
+        expect.objectContaining({
+          id: 2,
+          title: 'Top Rated TV',
+          popular: false,
+          toprated: true,
+          favorite: false,
+        }),
+      ])
     );
   });
 });
 
 describe('movieStore - refreshMovies', () => {
+  const originalConsoleError = console.error;
+  const originalConsoleWarn = console.warn;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    // Suppress console output from error handler
+    console.error = jest.fn();
+    console.warn = jest.fn();
     useMovieStore.setState({
       movies: [],
       loading: false,
@@ -156,6 +186,11 @@ describe('movieStore - refreshMovies', () => {
     });
   });
 
+  afterEach(() => {
+    console.error = originalConsoleError;
+    console.warn = originalConsoleWarn;
+  });
+
   it('should skip refresh when offline', async () => {
     useMovieStore.setState({ isOffline: true });
 
@@ -163,7 +198,12 @@ describe('movieStore - refreshMovies', () => {
 
     await useMovieStore.getState().refreshMovies();
 
-    expect(consoleSpy).toHaveBeenCalledWith('Offline mode: cannot refresh, showing cached data');
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[INFO]'),
+      expect.stringContaining('Offline mode: cannot refresh'),
+      expect.anything(),
+      expect.anything()
+    );
     expect(useMovieStore.getState().error).toBe(
       'Cannot refresh while offline. Showing cached movies.'
     );
@@ -179,7 +219,12 @@ describe('movieStore - refreshMovies', () => {
 
     await useMovieStore.getState().refreshMovies();
 
-    expect(consoleSpy).toHaveBeenCalledWith('Refresh already in progress, skipping...');
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[INFO]'),
+      expect.stringContaining('Refresh already in progress'),
+      expect.anything(),
+      expect.anything()
+    );
     expect(TMDbService.getPopularMovies).not.toHaveBeenCalled();
 
     consoleSpy.mockRestore();
@@ -231,14 +276,18 @@ describe('movieStore - refreshMovies', () => {
 
     await useMovieStore.getState().refreshMovies();
 
-    // Verify favorite status was preserved
-    expect(insertMovie).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 1,
-        favorite: true, // Should be preserved
-        popular: true,
-        toprated: false,
-      })
+    // Verify favorite status was preserved via batch insert
+    expect(insertMovies).toHaveBeenCalled();
+    const insertedMovies = (insertMovies as jest.Mock).mock.calls[0][0];
+    expect(insertedMovies).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 1,
+          favorite: true, // Should be preserved
+          popular: true,
+          toprated: false,
+        }),
+      ])
     );
   });
 

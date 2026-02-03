@@ -24,9 +24,12 @@ jest.mock('../../src/database/init');
 describe('Database Queries - Error Handling', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockDb: any;
+  const originalConsoleError = console.error;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Suppress console.error from error handler
+    console.error = jest.fn();
 
     mockDb = {
       runAsync: jest.fn(),
@@ -35,6 +38,10 @@ describe('Database Queries - Error Handling', () => {
     };
 
     (getDatabase as jest.Mock).mockReturnValue(mockDb);
+  });
+
+  afterEach(() => {
+    console.error = originalConsoleError;
   });
 
   describe('insertMovie', () => {
@@ -57,7 +64,7 @@ describe('Database Queries - Error Handling', () => {
       mockDb.runAsync.mockRejectedValueOnce(new Error('Database locked'));
 
       await expect(insertMovie(testMovie)).rejects.toThrow(
-        'Failed to insert movie: Database locked'
+        'insertMovie: Database locked'
       );
     });
 
@@ -79,7 +86,7 @@ describe('Database Queries - Error Handling', () => {
 
       mockDb.runAsync.mockRejectedValueOnce('String error');
 
-      await expect(insertMovie(testMovie)).rejects.toThrow('Failed to insert movie: Unknown error');
+      await expect(insertMovie(testMovie)).rejects.toThrow('insertMovie: Unknown error');
     });
   });
 
@@ -87,14 +94,14 @@ describe('Database Queries - Error Handling', () => {
     it('should throw error when database query fails', async () => {
       mockDb.getFirstAsync.mockRejectedValueOnce(new Error('Query failed'));
 
-      await expect(getMovieById(1)).rejects.toThrow('Failed to get movie by ID: Query failed');
+      await expect(getMovieById(1)).rejects.toThrow('getMovieById: Query failed');
     });
 
     it('should handle non-Error exceptions in getMovieById', async () => {
       mockDb.getFirstAsync.mockRejectedValueOnce('String error');
 
       await expect(getMovieById(1)).rejects.toThrow(
-        'Failed to get movie by ID: Unknown error'
+        'getMovieById: Unknown error'
       );
     });
   });
@@ -104,7 +111,7 @@ describe('Database Queries - Error Handling', () => {
       mockDb.getAllAsync.mockRejectedValueOnce(new Error('Connection lost'));
 
       await expect(getFavoriteMovies()).rejects.toThrow(
-        'Failed to get favorite movies: Connection lost'
+        'getFavoriteMovies: Connection lost'
       );
     });
 
@@ -112,7 +119,7 @@ describe('Database Queries - Error Handling', () => {
       mockDb.getAllAsync.mockRejectedValueOnce('String error');
 
       await expect(getFavoriteMovies()).rejects.toThrow(
-        'Failed to get favorite movies: Unknown error'
+        'getFavoriteMovies: Unknown error'
       );
     });
   });
@@ -122,7 +129,7 @@ describe('Database Queries - Error Handling', () => {
       mockDb.getAllAsync.mockRejectedValueOnce(new Error('Table not found'));
 
       await expect(getPopularMovies()).rejects.toThrow(
-        'Failed to get popular movies: Table not found'
+        'getPopularMovies: Table not found'
       );
     });
 
@@ -130,7 +137,7 @@ describe('Database Queries - Error Handling', () => {
       mockDb.getAllAsync.mockRejectedValueOnce('String error');
 
       await expect(getPopularMovies()).rejects.toThrow(
-        'Failed to get popular movies: Unknown error'
+        'getPopularMovies: Unknown error'
       );
     });
   });
@@ -139,14 +146,14 @@ describe('Database Queries - Error Handling', () => {
     it('should throw error when database query fails', async () => {
       mockDb.getAllAsync.mockRejectedValueOnce(new Error('Disk full'));
 
-      await expect(getTopRatedMovies()).rejects.toThrow('Failed to get top-rated movies: Disk full');
+      await expect(getTopRatedMovies()).rejects.toThrow('getTopRatedMovies: Disk full');
     });
 
     it('should handle non-Error exceptions in getTopRatedMovies', async () => {
       mockDb.getAllAsync.mockRejectedValueOnce('String error');
 
       await expect(getTopRatedMovies()).rejects.toThrow(
-        'Failed to get top-rated movies: Unknown error'
+        'getTopRatedMovies: Unknown error'
       );
     });
   });
@@ -155,13 +162,13 @@ describe('Database Queries - Error Handling', () => {
     it('should throw error when database query fails', async () => {
       mockDb.getAllAsync.mockRejectedValueOnce(new Error('Timeout'));
 
-      await expect(getAllMovies()).rejects.toThrow('Failed to get all movies: Timeout');
+      await expect(getAllMovies()).rejects.toThrow('getAllMovies: Timeout');
     });
 
     it('should handle non-Error exceptions in getAllMovies', async () => {
       mockDb.getAllAsync.mockRejectedValueOnce('String error');
 
-      await expect(getAllMovies()).rejects.toThrow('Failed to get all movies: Unknown error');
+      await expect(getAllMovies()).rejects.toThrow('getAllMovies: Unknown error');
     });
   });
 
@@ -169,13 +176,13 @@ describe('Database Queries - Error Handling', () => {
     it('should throw error when database delete fails', async () => {
       mockDb.runAsync.mockRejectedValueOnce(new Error('Cannot delete'));
 
-      await expect(deleteMovie(1)).rejects.toThrow('Failed to delete movie: Cannot delete');
+      await expect(deleteMovie(1)).rejects.toThrow('deleteMovie: Cannot delete');
     });
 
     it('should handle non-Error exceptions in deleteMovie', async () => {
       mockDb.runAsync.mockRejectedValueOnce('String error');
 
-      await expect(deleteMovie(1)).rejects.toThrow('Failed to delete movie: Unknown error');
+      await expect(deleteMovie(1)).rejects.toThrow('deleteMovie: Unknown error');
     });
   });
 
@@ -194,7 +201,7 @@ describe('Database Queries - Error Handling', () => {
 
       mockDb.runAsync.mockRejectedValueOnce(new Error('Insert failed'));
 
-      await expect(insertVideo(testVideo)).rejects.toThrow('Failed to insert video: Insert failed');
+      await expect(insertVideo(testVideo)).rejects.toThrow('insertVideo: Insert failed');
     });
 
     it('should handle non-Error exceptions in insertVideo', async () => {
@@ -211,7 +218,7 @@ describe('Database Queries - Error Handling', () => {
 
       mockDb.runAsync.mockRejectedValueOnce('String error');
 
-      await expect(insertVideo(testVideo)).rejects.toThrow('Failed to insert video: Unknown error');
+      await expect(insertVideo(testVideo)).rejects.toThrow('insertVideo: Unknown error');
     });
   });
 
@@ -220,7 +227,7 @@ describe('Database Queries - Error Handling', () => {
       mockDb.getAllAsync.mockRejectedValueOnce(new Error('Query error'));
 
       await expect(getTrailersForMovie(1)).rejects.toThrow(
-        'Failed to get trailers for movie: Query error'
+        'getTrailersForMovie: Query error'
       );
     });
 
@@ -228,7 +235,7 @@ describe('Database Queries - Error Handling', () => {
       mockDb.getAllAsync.mockRejectedValueOnce('String error');
 
       await expect(getTrailersForMovie(1)).rejects.toThrow(
-        'Failed to get trailers for movie: Unknown error'
+        'getTrailersForMovie: Unknown error'
       );
     });
   });
@@ -238,14 +245,14 @@ describe('Database Queries - Error Handling', () => {
       mockDb.getAllAsync.mockRejectedValueOnce(new Error('Database corrupt'));
 
       await expect(getVideosForMovie(1)).rejects.toThrow(
-        'Failed to get videos for movie: Database corrupt'
+        'getVideosForMovie: Database corrupt'
       );
     });
 
     it('should handle non-Error exceptions in getVideosForMovie', async () => {
       mockDb.getAllAsync.mockRejectedValueOnce('String error');
 
-      await expect(getVideosForMovie(1)).rejects.toThrow('Failed to get videos for movie: Unknown error');
+      await expect(getVideosForMovie(1)).rejects.toThrow('getVideosForMovie: Unknown error');
     });
   });
 
@@ -260,7 +267,7 @@ describe('Database Queries - Error Handling', () => {
       mockDb.runAsync.mockRejectedValueOnce(new Error('Write failed'));
 
       await expect(insertReview(testReview)).rejects.toThrow(
-        'Failed to insert review: Write failed'
+        'insertReview: Write failed'
       );
     });
 
@@ -274,7 +281,7 @@ describe('Database Queries - Error Handling', () => {
       mockDb.runAsync.mockRejectedValueOnce('String error');
 
       await expect(insertReview(testReview)).rejects.toThrow(
-        'Failed to insert review: Unknown error'
+        'insertReview: Unknown error'
       );
     });
   });
@@ -284,7 +291,7 @@ describe('Database Queries - Error Handling', () => {
       mockDb.getAllAsync.mockRejectedValueOnce(new Error('Connection timeout'));
 
       await expect(getReviewsForMovie(1)).rejects.toThrow(
-        'Failed to get reviews for movie: Connection timeout'
+        'getReviewsForMovie: Connection timeout'
       );
     });
 
@@ -292,7 +299,7 @@ describe('Database Queries - Error Handling', () => {
       mockDb.getAllAsync.mockRejectedValueOnce('String error');
 
       await expect(getReviewsForMovie(1)).rejects.toThrow(
-        'Failed to get reviews for movie: Unknown error'
+        'getReviewsForMovie: Unknown error'
       );
     });
   });

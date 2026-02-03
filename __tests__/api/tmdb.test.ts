@@ -11,12 +11,22 @@ import {
 } from '../../src/api/types';
 
 describe('TMDbService', () => {
-  // Save original fetch
+  // Save originals
   const originalFetch = global.fetch;
+  const originalConsoleWarn = console.warn;
+  const originalConsoleError = console.error;
+
+  beforeEach(() => {
+    // Suppress console warnings/errors from retry logic in tests
+    console.warn = jest.fn();
+    console.error = jest.fn();
+  });
 
   afterEach(() => {
-    // Restore original fetch after each test
+    // Restore originals after each test
     global.fetch = originalFetch;
+    console.warn = originalConsoleWarn;
+    console.error = originalConsoleError;
     jest.clearAllMocks();
   });
 
@@ -55,10 +65,12 @@ describe('TMDbService', () => {
       expect(result.results).toHaveLength(1);
       expect(result.results[0].title).toBe('Fight Club');
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/discover/movie')
+        expect.stringContaining('/discover/movie'),
+        expect.anything()
       );
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('sort_by=popularity.desc')
+        expect.stringContaining('sort_by=popularity.desc'),
+        expect.anything()
       );
     });
 
@@ -70,7 +82,7 @@ describe('TMDbService', () => {
 
       await TMDbService.getPopularMovies(2);
 
-      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('page=2'));
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('page=2'), expect.anything());
     });
 
     it('should throw APIError on 401 Unauthorized', async () => {
@@ -126,13 +138,16 @@ describe('TMDbService', () => {
       expect(result.results).toHaveLength(1);
       expect(result.results[0].name).toBe('Arcane');
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/discover/tv')
+        expect.stringContaining('/discover/tv'),
+        expect.anything()
       );
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('sort_by=vote_average.desc')
+        expect.stringContaining('sort_by=vote_average.desc'),
+        expect.anything()
       );
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('vote_count.gte=100')
+        expect.stringContaining('vote_count.gte=100'),
+        expect.anything()
       );
     });
   });
@@ -168,7 +183,8 @@ describe('TMDbService', () => {
       expect(result.results[0].key).toBe('BdJKm16Co6M');
       expect(result.results[0].site).toBe('YouTube');
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/movie/550/videos')
+        expect.stringContaining('/movie/550/videos'),
+        expect.anything()
       );
     });
 
@@ -219,7 +235,8 @@ describe('TMDbService', () => {
       expect(result.results[0].author).toBe('John Doe');
       expect(result.results[0].content).toBe('Amazing movie!');
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/movie/550/reviews')
+        expect.stringContaining('/movie/550/reviews'),
+        expect.anything()
       );
     });
   });
