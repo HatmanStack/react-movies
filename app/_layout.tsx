@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect } from 'react';
 import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import 'react-native-reanimated';
+import FilterPills from '../src/components/FilterPills';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -61,6 +62,8 @@ function RootLayoutNav(): React.JSX.Element {
             headerTintColor: '#fff',
             headerTitleStyle: { fontWeight: 'bold' },
             animation: 'default',
+            headerTitle: () => <FilterPills />,
+            headerTitleAlign: 'center',
           }}
         />
         <Stack.Screen
@@ -74,18 +77,7 @@ function RootLayoutNav(): React.JSX.Element {
             animationDuration: 300,
           }}
         />
-        <Stack.Screen
-          name="filter"
-          options={{
-            title: 'Filter Movies',
-            presentation: 'modal',
-            headerStyle: { backgroundColor: theme.colors.primary },
-            headerTintColor: '#fff',
-            animation: 'slide_from_bottom',
-            animationDuration: 300,
-          }}
-        />
-      </Stack>
+              </Stack>
     </PaperProvider>
   );
 }

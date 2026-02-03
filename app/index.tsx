@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, useWindowDimensions } from 'react-native';
-import { FAB, Text, Banner } from 'react-native-paper';
+import { Text, Banner } from 'react-native-paper';
 import { router, useFocusEffect } from 'expo-router';
 import Head from 'expo-router/head';
 import { useMovieStore } from '../src/store/movieStore';
@@ -119,11 +119,6 @@ export default function HomeScreen(): React.JSX.Element {
     router.push(`/details/${movieId}`);
   }, []);
 
-  // Handle FAB press - navigate to filter screen
-  const handleFilterPress = useCallback(() => {
-    router.push('/filter');
-  }, []);
-
   // Handle error retry
   const handleRetry = useCallback(() => {
     clearError();
@@ -148,12 +143,6 @@ export default function HomeScreen(): React.JSX.Element {
     return (
       <View style={styles.container}>
         <ErrorMessage message={error} onRetry={handleRetry} />
-        <FAB
-          icon="filter-variant"
-          style={styles.fab}
-          onPress={handleFilterPress}
-          label="Filter"
-        />
       </View>
     );
   }
@@ -179,12 +168,6 @@ export default function HomeScreen(): React.JSX.Element {
             Try adjusting your filters to see more movies
           </Text>
         </View>
-        <FAB
-          icon="filter-variant"
-          style={styles.fab}
-          onPress={handleFilterPress}
-          label="Filter"
-        />
       </View>
     );
   }
@@ -256,13 +239,6 @@ export default function HomeScreen(): React.JSX.Element {
         accessibilityLabel={`Movie grid with ${numColumns} columns`}
       />
 
-      {/* Floating Action Button for Filter */}
-      <FAB
-        icon="filter-variant"
-        style={styles.fab}
-        onPress={handleFilterPress}
-        label="Filter"
-      />
     </View>
   );
 }
@@ -274,7 +250,7 @@ const styles = StyleSheet.create({
   },
   gridContent: {
     padding: 8,
-    paddingBottom: 80,
+    paddingBottom: 16,
   },
   emptyState: {
     flex: 1,
@@ -289,13 +265,6 @@ const styles = StyleSheet.create({
   emptyMessage: {
     color: COLORS.TEXT_TERTIARY,
     textAlign: 'center',
-  },
-  fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
-    backgroundColor: COLORS.PRIMARY,
   },
   loadingMore: {
     padding: 20,
