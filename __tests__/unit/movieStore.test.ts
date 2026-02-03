@@ -5,7 +5,7 @@
 
 import { useMovieStore } from '../../src/store/movieStore';
 import { TMDbService } from '../../src/api/tmdb';
-import { insertMovie, insertMovies, getFavoriteMovies } from '../../src/database/queries';
+import { insertMovies, getFavoriteMovies } from '../../src/database/queries';
 
 // Mock database queries
 jest.mock('../../src/database/queries', () => ({
