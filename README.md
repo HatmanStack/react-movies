@@ -52,4 +52,4 @@ A cross-platform mobile app for discovering movies, powered by the TMDb API.
 
 ## License
 
-This project is licensed under the terms of the MIT license.
+This project is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
