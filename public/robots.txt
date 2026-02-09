@@ -4,4 +4,4 @@ Allow: /
 Disallow: /filter
 
 # Sitemap location
-Sitemap: https://christophergalliart.github.io/react-movies/sitemap.xml
+Sitemap: https://movies.hatstack.fun/sitemap.xml

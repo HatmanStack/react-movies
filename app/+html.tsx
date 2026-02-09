@@ -16,6 +16,9 @@ export default function Root({ children }: { children: React.ReactNode }) {
         />
 
         {/* SEO Meta Tags */}
+        <title>React Movies - Discover Popular Movies & TV Shows</title>
+        <meta name="description" content="Discover popular movies and TV shows from TMDb. Browse top-rated films, read reviews, watch trailers, and save your favorites." />
+        <link rel="canonical" href="https://movies.hatstack.fun/" />
         <meta name="robots" content="index, follow" />
         <meta name="author" content="React Movies" />
         <meta name="theme-color" content="#1976D2" />

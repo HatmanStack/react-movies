@@ -4,7 +4,7 @@
 
 export const SEO_CONFIG = {
   siteName: 'React Movies',
-  siteUrl: 'https://christophergalliart.github.io/react-movies', // Update with actual domain
+  siteUrl: 'https://movies.hatstack.fun',
   defaultTitle: 'React Movies - Discover Popular Movies & TV Shows',
   defaultDescription:
     'Discover popular movies and TV shows from TMDb. Browse top-rated films, read reviews, watch trailers, and save your favorites.',
