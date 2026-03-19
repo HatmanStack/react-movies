@@ -1,4 +1,4 @@
-/* eslint-env jest */
+/* global jest, describe, it, expect */
 import * as React from 'react';
 import renderer from 'react-test-renderer';
 

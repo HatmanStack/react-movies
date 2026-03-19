@@ -1,4 +1,4 @@
-/* eslint-env jest, node */
+/* global jest, beforeEach, afterEach */
 // Jest setup file for React Native Testing Library
 // extend-expect is now built into @testing-library/react-native v12.4+
 
@@ -198,11 +198,44 @@ jest.mock('@react-native-async-storage/async-storage', () => {
   };
 });
 
+// Mock react-native-worklets
+jest.mock('react-native-worklets', () => ({
+  createSerializable: jest.fn(() => ({})),
+}));
+
 // Mock react-native-reanimated
 jest.mock('react-native-reanimated', () => {
-  const Reanimated = require('react-native-reanimated/mock');
-  Reanimated.default.call = () => {};
-  return Reanimated;
+  const React = require('react');
+  return {
+    __esModule: true,
+    default: {
+      call: jest.fn(),
+      createAnimatedComponent: (component) => component,
+      View: React.forwardRef((props, ref) => React.createElement('View', { ...props, ref })),
+      Text: React.forwardRef((props, ref) => React.createElement('Text', { ...props, ref })),
+      Image: React.forwardRef((props, ref) => React.createElement('Image', { ...props, ref })),
+      ScrollView: React.forwardRef((props, ref) => React.createElement('ScrollView', { ...props, ref })),
+      FlatList: React.forwardRef((props, ref) => React.createElement('FlatList', { ...props, ref })),
+    },
+    useSharedValue: jest.fn((init) => ({ value: init })),
+    useAnimatedStyle: jest.fn(() => ({})),
+    useAnimatedRef: jest.fn(() => ({ current: null })),
+    withSpring: jest.fn((val) => val),
+    withTiming: jest.fn((val) => val),
+    withDecay: jest.fn((val) => val),
+    withDelay: jest.fn((_, val) => val),
+    withSequence: jest.fn((...vals) => vals[0]),
+    withRepeat: jest.fn((val) => val),
+    Easing: { linear: jest.fn(), ease: jest.fn(), bezier: jest.fn(() => jest.fn()) },
+    FadeIn: { duration: jest.fn(() => ({ delay: jest.fn() })) },
+    FadeOut: { duration: jest.fn(() => ({ delay: jest.fn() })) },
+    SlideInRight: { duration: jest.fn() },
+    SlideOutLeft: { duration: jest.fn() },
+    Layout: { duration: jest.fn() },
+    runOnJS: jest.fn((fn) => fn),
+    runOnUI: jest.fn((fn) => fn),
+    createAnimatedComponent: (component) => component,
+  };
 });
 
 // Mock expo-router

@@ -146,13 +146,14 @@ export async function webInsertMovies(movies: MovieDetails[]): Promise<void> {
   }
 
   // Batch write all movies + indexes
-  await AsyncStorage.multiSet([
+  const allEntries: [string, string][] = [
     ...writes,
     [KEYS.MOVIES_INDEX, JSON.stringify([...allIds])],
     [KEYS.FAVORITES_INDEX, JSON.stringify([...favoriteIds])],
     [KEYS.POPULAR_INDEX, JSON.stringify([...popularIds])],
     [KEYS.TOPRATED_INDEX, JSON.stringify([...topratedIds])],
-  ]);
+  ];
+  await Promise.all(allEntries.map(([key, value]) => AsyncStorage.setItem(key, value)));
 }
 
 /**
@@ -170,11 +171,12 @@ async function getMoviesByIds(ids: number[]): Promise<MovieDetails[]> {
   if (ids.length === 0) return [];
 
   const keys = ids.map(id => KEYS.movieKey(id));
-  const results = await AsyncStorage.multiGet(keys);
+  const results = await Promise.all(keys.map(async (key) => {
+    const json = await AsyncStorage.getItem(key);
+    return safeJsonParse<MovieDetails | null>(json, null);
+  }));
 
-  return results
-    .map(([, json]) => safeJsonParse<MovieDetails | null>(json, null))
-    .filter((movie): movie is MovieDetails => movie !== null);
+  return results.filter((movie: MovieDetails | null): movie is MovieDetails => movie !== null);
 }
 
 /**
@@ -419,5 +421,5 @@ export async function clearIndexedStorage(): Promise<void> {
     'storage_migrated_v2',
   ];
 
-  await AsyncStorage.multiRemove(keysToRemove);
+  await Promise.all(keysToRemove.map(key => AsyncStorage.removeItem(key)));
 }
