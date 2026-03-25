@@ -16,7 +16,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 /**
  * MovieCard Props
  */
-export interface MovieCardProps {
+interface MovieCardProps {
   movie: MovieDetails;
   onPress: (id: number) => void;
 }

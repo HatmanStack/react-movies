@@ -10,7 +10,7 @@ import { YouTubeService } from '../api/youtube';
 /**
  * Flags for categorizing movies
  */
-export interface MovieFlags {
+interface MovieFlags {
   popular: boolean;
   toprated: boolean;
   favorite?: boolean;
@@ -51,7 +51,7 @@ export function mapTMDbToMovieDetails(
  * @param thumbnailUrl - Pre-fetched thumbnail URL
  * @returns VideoDetails domain object (without identity)
  */
-export function mapTMDbToVideoDetails(
+function mapTMDbToVideoDetails(
   video: TMDbVideo,
   movieId: number,
   thumbnailUrl: string
@@ -75,7 +75,7 @@ export function mapTMDbToVideoDetails(
  * @param movieId - Parent movie ID
  * @returns ReviewDetails domain object (without identity)
  */
-export function mapTMDbToReviewDetails(
+function mapTMDbToReviewDetails(
   review: TMDbReview,
   movieId: number
 ): Omit<ReviewDetails, 'identity'> {
@@ -137,33 +137,3 @@ export function mapTMDbReviewsToReviewDetails(
   return reviews.map(review => mapTMDbToReviewDetails(review, movieId));
 }
 
-/**
- * Merge movie with updated favorite status while preserving other fields
- *
- * @param movie - Original movie
- * @param favorite - New favorite status
- * @returns Updated movie with new favorite status
- */
-export function withFavoriteStatus(
-  movie: MovieDetails,
-  favorite: boolean
-): MovieDetails {
-  return { ...movie, favorite };
-}
-
-/**
- * Preserve favorite status when updating movie from API
- *
- * @param movie - Movie from API
- * @param existingFavorites - Set of existing favorite movie IDs
- * @returns Movie with preserved favorite status
- */
-export function preserveFavoriteStatus(
-  movie: MovieDetails,
-  existingFavorites: Set<number>
-): MovieDetails {
-  return {
-    ...movie,
-    favorite: existingFavorites.has(movie.id),
-  };
-}

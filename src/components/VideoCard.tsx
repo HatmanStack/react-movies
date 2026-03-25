@@ -8,7 +8,7 @@ import { VideoDetails } from '../models/types';
 /**
  * VideoCard Props
  */
-export interface VideoCardProps {
+interface VideoCardProps {
   video: VideoDetails;
   onPress: (key: string) => void;
 }

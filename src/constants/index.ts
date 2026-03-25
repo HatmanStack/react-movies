@@ -13,7 +13,7 @@ export const FILTERS = {
   ALL: 'all',
 } as const;
 
-export type FilterType = (typeof FILTERS)[keyof typeof FILTERS];
+type FilterType = (typeof FILTERS)[keyof typeof FILTERS];
 
 /**
  * Default filter configuration
@@ -70,14 +70,6 @@ export const GRID_COLUMNS = {
   MD: 4,
   SM: 3,
   XS: 2,
-} as const;
-
-/**
- * Database configuration
- */
-export const DB = {
-  NAME: 'movies.db',
-  VERSION: 1,
 } as const;
 
 /**

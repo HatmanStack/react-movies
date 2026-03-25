@@ -12,7 +12,7 @@ import { APIError, NetworkError, DatabaseError } from '../api/errors';
 /**
  * Error severity levels
  */
-export enum ErrorSeverity {
+enum ErrorSeverity {
   DEBUG = 'debug',
   INFO = 'info',
   WARNING = 'warning',
@@ -23,7 +23,7 @@ export enum ErrorSeverity {
 /**
  * Formatted error for display
  */
-export interface FormattedError {
+interface FormattedError {
   title: string;
   message: string;
   severity: ErrorSeverity;
@@ -57,25 +57,6 @@ interface ErrorTracker {
 }
 
 let errorTracker: ErrorTracker | null = null;
-
-/**
- * Initialize error tracking service
- * Call this at app startup with your Sentry or error tracking instance
- *
- * @example
- * ```typescript
- * import * as Sentry from '@sentry/react-native';
- * initializeErrorTracking({
- *   captureException: Sentry.captureException,
- *   captureMessage: Sentry.captureMessage,
- *   setUser: Sentry.setUser,
- *   addBreadcrumb: Sentry.addBreadcrumb,
- * });
- * ```
- */
-export function initializeErrorTracking(tracker: ErrorTracker): void {
-  errorTracker = tracker;
-}
 
 // ============================================================================
 // STRUCTURED LOGGING
@@ -140,17 +121,6 @@ function outputLog(entry: LogEntry): void {
         level: entry.level,
       });
     }
-  }
-}
-
-/**
- * Log debug message
- * Only outputs in development
- */
-export function logDebug(message: string, context?: string, data?: Record<string, unknown>): void {
-  if (__DEV__) {
-    const entry = createLogEntry(ErrorSeverity.DEBUG, message, context, data);
-    outputLog(entry);
   }
 }
 
@@ -284,43 +254,6 @@ function getAPIErrorMessage(error: APIError): string {
 // ============================================================================
 
 /**
- * Check if error is retryable
- */
-export function isRetryableError(error: unknown): boolean {
-  const formatted = formatError(error);
-  return formatted.retryable;
-}
-
-/**
- * Check if error is due to network/connectivity issues
- */
-export function isNetworkError(error: unknown): boolean {
-  if (error instanceof NetworkError) {
-    return true;
-  }
-
-  if (error instanceof Error) {
-    const message = error.message.toLowerCase();
-    return (
-      message.includes('network') ||
-      message.includes('connection') ||
-      message.includes('timeout') ||
-      message.includes('fetch failed') ||
-      message.includes('aborted')
-    );
-  }
-
-  return false;
-}
-
-/**
- * Check if error is due to rate limiting
- */
-export function isRateLimitError(error: unknown): boolean {
-  return error instanceof APIError && error.statusCode === 429;
-}
-
-/**
  * Check if error is a cancellation (AbortError)
  */
 export function isAbortError(error: unknown): boolean {
@@ -331,25 +264,4 @@ export function isAbortError(error: unknown): boolean {
     return error.name === 'AbortError' || error.message.includes('aborted');
   }
   return false;
-}
-
-/**
- * Safely get error message from unknown error type
- */
-export function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  if (typeof error === 'string') {
-    return error;
-  }
-  return 'An unknown error occurred';
-}
-
-/**
- * Create a user-facing error message from an error
- */
-export function toUserMessage(error: unknown): string {
-  const formatted = formatError(error);
-  return formatted.message;
 }

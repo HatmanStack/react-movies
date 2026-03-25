@@ -13,7 +13,7 @@
  * - float fields → REAL
  * - String fields → TEXT
  */
-export const CREATE_MOVIE_DETAILS_TABLE = `
+const CREATE_MOVIE_DETAILS_TABLE = `
   CREATE TABLE IF NOT EXISTS movie_details (
     id INTEGER PRIMARY KEY,
     title TEXT,
@@ -38,7 +38,7 @@ export const CREATE_MOVIE_DETAILS_TABLE = `
  * - identity is auto-increment primary key
  * - id is foreign key reference to movie_details.id (not enforced)
  */
-export const CREATE_VIDEO_DETAILS_TABLE = `
+const CREATE_VIDEO_DETAILS_TABLE = `
   CREATE TABLE IF NOT EXISTS video_details (
     identity INTEGER PRIMARY KEY AUTOINCREMENT,
     id INTEGER,
@@ -60,7 +60,7 @@ export const CREATE_VIDEO_DETAILS_TABLE = `
  * - identity is auto-increment primary key
  * - id is foreign key reference to movie_details.id (not enforced)
  */
-export const CREATE_REVIEW_DETAILS_TABLE = `
+const CREATE_REVIEW_DETAILS_TABLE = `
   CREATE TABLE IF NOT EXISTS review_details (
     identity INTEGER PRIMARY KEY AUTOINCREMENT,
     id INTEGER,
@@ -73,7 +73,7 @@ export const CREATE_REVIEW_DETAILS_TABLE = `
  * Database version tracking table
  * Used for future schema migrations
  */
-export const CREATE_VERSION_TABLE = `
+const CREATE_VERSION_TABLE = `
   CREATE TABLE IF NOT EXISTS database_version (
     version INTEGER PRIMARY KEY
   );
@@ -82,7 +82,7 @@ export const CREATE_VERSION_TABLE = `
 /**
  * Performance indexes for frequently queried columns
  */
-export const CREATE_INDEXES = [
+const CREATE_INDEXES = [
   // Index for favorite movies filter
   `CREATE INDEX IF NOT EXISTS idx_movie_favorite ON movie_details(favorite);`,
 

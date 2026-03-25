@@ -6,66 +6,13 @@
 import { z } from 'zod';
 
 // ============================================================================
-// DOMAIN MODEL SCHEMAS
-// ============================================================================
-
-/**
- * MovieDetails validation schema
- */
-export const MovieDetailsSchema = z.object({
-  id: z.number().int().positive(),
-  title: z.string(),
-  overview: z.string(),
-  poster_path: z.string(),
-  release_date: z.string(),
-  vote_average: z.number().min(0).max(10),
-  vote_count: z.number().int().nonnegative(),
-  popularity: z.number().nonnegative(),
-  original_language: z.string(),
-  favorite: z.boolean(),
-  toprated: z.boolean(),
-  popular: z.boolean(),
-});
-
-
-
-/**
- * VideoDetails validation schema
- */
-export const VideoDetailsSchema = z.object({
-  identity: z.number().optional(),
-  id: z.number().int().positive(),
-  image_url: z.string(),
-  iso_639_1: z.string(),
-  iso_3166_1: z.string(),
-  key: z.string(),
-  site: z.string(),
-  size: z.string(),
-  type: z.string(),
-});
-
-
-
-/**
- * ReviewDetails validation schema
- */
-export const ReviewDetailsSchema = z.object({
-  identity: z.number().optional(),
-  id: z.number().int().positive(),
-  author: z.string(),
-  content: z.string(),
-});
-
-
-
-// ============================================================================
 // TMDb API RESPONSE SCHEMAS
 // ============================================================================
 
 /**
  * TMDb Movie/TV show response schema
  */
-export const TMDbMovieSchema = z.object({
+const TMDbMovieSchema = z.object({
   id: z.number().int().positive(),
   title: z.string().optional(),
   name: z.string().optional(),
@@ -100,7 +47,7 @@ export const TMDbDiscoverResponseSchema = z.object({
 /**
  * TMDb Video response schema
  */
-export const TMDbVideoSchema = z.object({
+const TMDbVideoSchema = z.object({
   id: z.string(),
   iso_639_1: z.string(),
   iso_3166_1: z.string(),
@@ -128,7 +75,7 @@ export const TMDbVideosResponseSchema = z.object({
 /**
  * TMDb Review response schema
  */
-export const TMDbReviewSchema = z.object({
+const TMDbReviewSchema = z.object({
   id: z.string(),
   author: z.string(),
   content: z.string(),
@@ -167,7 +114,7 @@ export const TMDbReviewsResponseSchema = z.object({
 /**
  * YouTube thumbnail schema
  */
-export const YouTubeThumbnailSchema = z.object({
+const YouTubeThumbnailSchema = z.object({
   url: z.string().url(),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
@@ -176,7 +123,7 @@ export const YouTubeThumbnailSchema = z.object({
 /**
  * YouTube video snippet schema
  */
-export const YouTubeSnippetSchema = z.object({
+const YouTubeSnippetSchema = z.object({
   thumbnails: z.object({
     default: YouTubeThumbnailSchema.optional(),
     medium: YouTubeThumbnailSchema.optional(),
@@ -189,7 +136,7 @@ export const YouTubeSnippetSchema = z.object({
 /**
  * YouTube video item schema
  */
-export const YouTubeVideoItemSchema = z.object({
+const YouTubeVideoItemSchema = z.object({
   id: z.string(),
   snippet: YouTubeSnippetSchema,
 });

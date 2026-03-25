@@ -406,20 +406,3 @@ export async function migrateToIndexedStorage(): Promise<void> {
   await AsyncStorage.setItem('storage_migrated_v2', 'true');
 }
 
-/**
- * Clear all indexed storage (for testing)
- */
-export async function clearIndexedStorage(): Promise<void> {
-  const allIds = await getIndexSet(KEYS.MOVIES_INDEX);
-
-  const keysToRemove = [
-    KEYS.MOVIES_INDEX,
-    KEYS.FAVORITES_INDEX,
-    KEYS.POPULAR_INDEX,
-    KEYS.TOPRATED_INDEX,
-    ...[...allIds].map(id => KEYS.movieKey(id)),
-    'storage_migrated_v2',
-  ];
-
-  await Promise.all(keysToRemove.map(key => AsyncStorage.removeItem(key)));
-}
