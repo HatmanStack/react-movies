@@ -127,7 +127,7 @@ export default function HomeScreen(): React.JSX.Element {
     loadMoviesFromFilters(activeFilters, controller.signal);
   }, [clearError, loadMoviesFromFilters, getActiveFilters]);
 
-  // Render movie item
+  // Render movie card item
   const renderMovieItem = useCallback(
     ({ item }: { item: typeof movies[0] }) => (
       <MovieCard movie={item} onPress={handleMoviePress} />
@@ -138,43 +138,70 @@ export default function HomeScreen(): React.JSX.Element {
   // Key extractor for FlatList
   const keyExtractor = useCallback((item: typeof movies[0]) => item.id.toString(), []);
 
-  // Helper to render the main content area
-  const renderContent = () => {
-    // Show error state
-    if (error && !loading) {
-      return (
-        <View style={styles.errorContainer}>
-          <ErrorMessage message={error} onRetry={handleRetry} />
-        </View>
-      );
-    }
-
-    // Show loading state (initial load only)
-    if (loading && movies.length === 0) {
-      return (
-        <View style={styles.loadingContainer}>
-          <LoadingSpinner message="Loading movies..." />
-        </View>
-      );
-    }
-
-    // Show empty state
-    if (!loading && movies.length === 0) {
-      return (
-        <View style={styles.emptyStateContainer}>
-          <View style={styles.emptyState}>
-            <Text variant="headlineSmall" style={styles.emptyTitle}>
-              No movies found
-            </Text>
-            <Text variant="bodyMedium" style={styles.emptyMessage}>
-              Try adjusting your filters to see more movies
-            </Text>
-          </View>
-        </View>
-      );
-    }
-
+  // Show error state
+  if (error && !loading) {
     return (
+      <View style={styles.container}>
+        <ErrorMessage message={error} onRetry={handleRetry} />
+      </View>
+    );
+  }
+
+  // Show loading state (initial load only)
+  if (loading && movies.length === 0) {
+    return (
+      <View style={styles.container}>
+        <LoadingSpinner message="Loading movies..." />
+      </View>
+    );
+  }
+
+  // Show empty state
+  if (!loading && movies.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.emptyState}>
+          <Text variant="headlineSmall" style={styles.emptyTitle}>
+            No movies found
+          </Text>
+          <Text variant="bodyMedium" style={styles.emptyMessage}>
+            Try adjusting your filters to see more movies
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Show movie grid
+  return (
+    <View style={styles.container}>
+      {/* SEO Head */}
+      <Head>
+        <title>{SEO_CONFIG.defaultTitle}</title>
+        <meta name="description" content={SEO_CONFIG.defaultDescription} />
+        <link rel="canonical" href={generateCanonicalUrl('/')} />
+        <meta property="og:title" content={SEO_CONFIG.defaultTitle} />
+        <meta property="og:description" content={SEO_CONFIG.defaultDescription} />
+        <meta property="og:url" content={generateCanonicalUrl('/')} />
+        <meta
+          property="og:image"
+          content={`${SEO_CONFIG.siteUrl}${SEO_CONFIG.defaultImage}`}
+        />
+        <meta name="twitter:title" content={SEO_CONFIG.defaultTitle} />
+        <meta name="twitter:description" content={SEO_CONFIG.defaultDescription} />
+        <meta
+          name="twitter:image"
+          content={`${SEO_CONFIG.siteUrl}${SEO_CONFIG.defaultImage}`}
+        />
+      </Head>
+
+      {/* Offline Banner */}
+      {isOffline && (
+        <Banner visible={true} icon="wifi-off">
+          No internet connection. Showing cached data.
+        </Banner>
+      )}
+
       <FlatList
         key={`grid-${numColumns}`}
         data={movies}
@@ -211,40 +238,7 @@ export default function HomeScreen(): React.JSX.Element {
         accessible={true}
         accessibilityLabel={`Movie grid with ${numColumns} columns`}
       />
-    );
-  };
 
-  // Show movie grid
-  return (
-    <View style={styles.container}>
-      {/* SEO Head - Always rendered for static export and crawlers */}
-      <Head>
-        <title>{SEO_CONFIG.defaultTitle}</title>
-        <meta name="description" content={SEO_CONFIG.defaultDescription} />
-        <link rel="canonical" href={generateCanonicalUrl('/')} />
-        <meta property="og:title" content={SEO_CONFIG.defaultTitle} />
-        <meta property="og:description" content={SEO_CONFIG.defaultDescription} />
-        <meta property="og:url" content={generateCanonicalUrl('/')} />
-        <meta
-          property="og:image"
-          content={`${SEO_CONFIG.siteUrl}${SEO_CONFIG.defaultImage}`}
-        />
-        <meta name="twitter:title" content={SEO_CONFIG.defaultTitle} />
-        <meta name="twitter:description" content={SEO_CONFIG.defaultDescription} />
-        <meta
-          name="twitter:image"
-          content={`${SEO_CONFIG.siteUrl}${SEO_CONFIG.defaultImage}`}
-        />
-      </Head>
-
-      {/* Offline Banner */}
-      {isOffline && (
-        <Banner visible={true} icon="wifi-off">
-          No internet connection. Showing cached data.
-        </Banner>
-      )}
-
-      {renderContent()}
     </View>
   );
 }
@@ -253,15 +247,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.BACKGROUND,
-  },
-  errorContainer: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-  },
-  emptyStateContainer: {
-    flex: 1,
   },
   gridContent: {
     padding: 8,
