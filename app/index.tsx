@@ -42,7 +42,6 @@ export default function HomeScreen(): React.JSX.Element {
   const isOffline = useMovieStore((state) => state.isOffline);
   const loadMoviesFromFilters = useMovieStore((state) => state.loadMoviesFromFilters);
   const syncMoviesWithAPI = useMovieStore((state) => state.syncMoviesWithAPI);
-  const refreshMovies = useMovieStore((state) => state.refreshMovies);
   const loadMoreMovies = useMovieStore((state) => state.loadMoreMovies);
   const clearError = useMovieStore((state) => state.clearError);
 
@@ -103,8 +102,8 @@ export default function HomeScreen(): React.JSX.Element {
   const handleRefresh = useCallback(() => {
     const controller = new AbortController();
     abortControllerRef.current = controller;
-    refreshMovies(controller.signal);
-  }, [refreshMovies]);
+    syncMoviesWithAPI(controller.signal, { preserveFavorites: true });
+  }, [syncMoviesWithAPI]);
 
   // Handle infinite scroll with cancellation
   const handleEndReached = useCallback(() => {

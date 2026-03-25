@@ -1,6 +1,6 @@
 /**
  * Unit tests for movieStore
- * Covers offline mode, syncing debounce, error handling, and refreshMovies
+ * Covers offline mode, syncing debounce, error handling, and preserveFavorites
  */
 
 import { useMovieStore } from '../../src/store/movieStore';
@@ -168,7 +168,7 @@ describe('movieStore - syncMoviesWithAPI', () => {
   });
 });
 
-describe('movieStore - refreshMovies', () => {
+describe('movieStore - syncMoviesWithAPI (preserveFavorites)', () => {
   const originalConsoleError = console.error;
   const originalConsoleWarn = console.warn;
 
@@ -196,11 +196,11 @@ describe('movieStore - refreshMovies', () => {
 
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
-    await useMovieStore.getState().refreshMovies();
+    await useMovieStore.getState().syncMoviesWithAPI(undefined, { preserveFavorites: true });
 
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining('[INFO]'),
-      expect.stringContaining('Offline mode: cannot refresh'),
+      expect.stringContaining('Offline mode'),
       expect.anything(),
       expect.anything()
     );
@@ -217,11 +217,11 @@ describe('movieStore - refreshMovies', () => {
 
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
-    await useMovieStore.getState().refreshMovies();
+    await useMovieStore.getState().syncMoviesWithAPI(undefined, { preserveFavorites: true });
 
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining('[INFO]'),
-      expect.stringContaining('Refresh already in progress'),
+      expect.stringContaining('Sync already in progress'),
       expect.anything(),
       expect.anything()
     );
@@ -274,7 +274,7 @@ describe('movieStore - refreshMovies', () => {
     (TMDbService.getPopularMovies as jest.Mock).mockResolvedValueOnce(mockPopularMovies);
     (TMDbService.getTopRatedTV as jest.Mock).mockResolvedValueOnce(mockTopRatedTV);
 
-    await useMovieStore.getState().refreshMovies();
+    await useMovieStore.getState().syncMoviesWithAPI(undefined, { preserveFavorites: true });
 
     // Verify favorite status was preserved via batch insert
     expect(insertMovies).toHaveBeenCalled();
@@ -297,7 +297,7 @@ describe('movieStore - refreshMovies', () => {
       new Error('API timeout')
     );
 
-    await useMovieStore.getState().refreshMovies();
+    await useMovieStore.getState().syncMoviesWithAPI(undefined, { preserveFavorites: true });
 
     const state = useMovieStore.getState();
     expect(state.error).toBe('Failed to refresh movies: API timeout');
@@ -309,7 +309,7 @@ describe('movieStore - refreshMovies', () => {
     (getFavoriteMovies as jest.Mock).mockResolvedValueOnce([]);
     (TMDbService.getPopularMovies as jest.Mock).mockRejectedValueOnce('String error');
 
-    await useMovieStore.getState().refreshMovies();
+    await useMovieStore.getState().syncMoviesWithAPI(undefined, { preserveFavorites: true });
 
     const state = useMovieStore.getState();
     expect(state.error).toContain('Failed to refresh movies');

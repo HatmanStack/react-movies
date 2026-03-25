@@ -54,8 +54,7 @@ interface MovieStore {
   toggleFavorite: (movieId: number) => Promise<void>;
   refreshMovie: (movieId: number) => Promise<void>;
   clearError: () => void;
-  syncMoviesWithAPI: (signal?: AbortSignal) => Promise<void>;
-  refreshMovies: (signal?: AbortSignal) => Promise<void>;
+  syncMoviesWithAPI: (signal?: AbortSignal, options?: { preserveFavorites?: boolean }) => Promise<void>;
   setOfflineStatus: (isOffline: boolean) => void;
 }
 
@@ -313,20 +312,28 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
   /**
    * Sync movies with TMDb API
    * Fetches popular movies and top-rated TV shows from API and stores in database
+   *
+   * @param signal - AbortSignal for cancellation
+   * @param options.preserveFavorites - When true, preserves user's favorite status during sync
    */
-  syncMoviesWithAPI: async (signal?: AbortSignal) => {
+  syncMoviesWithAPI: async (signal?: AbortSignal, options?: { preserveFavorites?: boolean }) => {
     const { syncing, isOffline } = get();
+    const preserveFavorites = options?.preserveFavorites ?? false;
+    const context = preserveFavorites ? 'refreshMovies' : 'syncMoviesWithAPI';
 
     // Skip sync if offline
     if (isOffline) {
-      logInfo('Offline mode: skipping API sync, using cached data', 'syncMoviesWithAPI');
-      set({ error: 'You are offline. Showing cached movies.' });
+      const offlineMsg = preserveFavorites
+        ? 'Cannot refresh while offline. Showing cached movies.'
+        : 'You are offline. Showing cached movies.';
+      logInfo(`Offline mode: skipping API sync, using cached data`, context);
+      set({ error: offlineMsg, ...(preserveFavorites ? { loading: false } : {}) });
       return;
     }
 
     // Prevent duplicate syncs
     if (syncing) {
-      logInfo('Sync already in progress, skipping...', 'syncMoviesWithAPI');
+      logInfo('Sync already in progress, skipping...', context);
       return;
     }
 
@@ -346,6 +353,13 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
         return;
       }
 
+      // Get current favorites if preserving them
+      let favoriteIds = new Set<number>();
+      if (preserveFavorites) {
+        const currentFavorites = await getFavoriteMovies();
+        favoriteIds = new Set(currentFavorites.map((m) => m.id));
+      }
+
       // Fetch popular movies and top-rated TV shows in parallel
       const [popularResponse, topRatedResponse] = await Promise.all([
         TMDbService.getPopularMovies(1, signal),
@@ -358,15 +372,31 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
       }
 
       // Map API responses to domain models
-      const popularMovies = mapTMDbMoviesToMovieDetails(popularResponse.results, {
-        popular: true,
-        toprated: false,
-      });
+      const popularMovies = preserveFavorites
+        ? popularResponse.results.map((movie) =>
+            mapTMDbToMovieDetails(movie, {
+              popular: true,
+              toprated: false,
+              favorite: favoriteIds.has(movie.id),
+            })
+          )
+        : mapTMDbMoviesToMovieDetails(popularResponse.results, {
+            popular: true,
+            toprated: false,
+          });
 
-      const topRatedMovies = mapTMDbMoviesToMovieDetails(topRatedResponse.results, {
-        popular: false,
-        toprated: true,
-      });
+      const topRatedMovies = preserveFavorites
+        ? topRatedResponse.results.map((movie) =>
+            mapTMDbToMovieDetails(movie, {
+              popular: false,
+              toprated: true,
+              favorite: favoriteIds.has(movie.id),
+            })
+          )
+        : mapTMDbMoviesToMovieDetails(topRatedResponse.results, {
+            popular: false,
+            toprated: true,
+          });
 
       // Combine all movies
       const allMovies = [...popularMovies, ...topRatedMovies];
@@ -384,98 +414,10 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
         return;
       }
 
-      logError(error, 'syncMoviesWithAPI');
+      logError(error, context);
       const formatted = formatError(error);
-      set({ error: `Failed to sync with API: ${formatted.message}`, syncing: false, loading: false });
-    }
-  },
-
-  /**
-   * Refresh movies from TMDb API
-   * Preserves user's favorite status
-   */
-  refreshMovies: async (signal?: AbortSignal) => {
-    const { syncing, isOffline } = get();
-
-    // Skip refresh if offline
-    if (isOffline) {
-      logInfo('Offline mode: cannot refresh, showing cached data', 'refreshMovies');
-      set({ error: 'Cannot refresh while offline. Showing cached movies.', loading: false });
-      return;
-    }
-
-    // Prevent duplicate refreshes
-    if (syncing) {
-      logInfo('Refresh already in progress, skipping...', 'refreshMovies');
-      return;
-    }
-
-    set({
-      syncing: true,
-      loading: true,
-      error: null,
-      popularPage: 1,
-      topRatedPage: 1,
-      hasMorePopular: true,
-      hasMoreTopRated: true,
-    });
-
-    try {
-      if (signal?.aborted) {
-        set({ syncing: false, loading: false });
-        return;
-      }
-
-      // Get current favorites to preserve them
-      const currentFavorites = await getFavoriteMovies();
-      const favoriteIds = new Set(currentFavorites.map((m) => m.id));
-
-      // Fetch fresh data from API
-      const [popularResponse, topRatedResponse] = await Promise.all([
-        TMDbService.getPopularMovies(1, signal),
-        TMDbService.getTopRatedTV(1, signal),
-      ]);
-
-      if (signal?.aborted) {
-        set({ syncing: false, loading: false });
-        return;
-      }
-
-      // Map and preserve favorites
-      const popularMovies = popularResponse.results.map((movie) =>
-        mapTMDbToMovieDetails(movie, {
-          popular: true,
-          toprated: false,
-          favorite: favoriteIds.has(movie.id),
-        })
-      );
-
-      const topRatedMovies = topRatedResponse.results.map((movie) =>
-        mapTMDbToMovieDetails(movie, {
-          popular: false,
-          toprated: true,
-          favorite: favoriteIds.has(movie.id),
-        })
-      );
-
-      const allMovies = [...popularMovies, ...topRatedMovies];
-
-      // Batch insert into database
-      await insertMovies(allMovies);
-
-      // Reload movies from database
-      await get().loadMoviesFromFilters(DEFAULT_FILTERS, signal);
-
-      set({ syncing: false, loading: false });
-    } catch (error) {
-      if (isAbortError(error)) {
-        set({ syncing: false, loading: false });
-        return;
-      }
-
-      logError(error, 'refreshMovies');
-      const formatted = formatError(error);
-      set({ error: `Failed to refresh movies: ${formatted.message}`, syncing: false, loading: false });
+      const errorPrefix = preserveFavorites ? 'Failed to refresh movies' : 'Failed to sync with API';
+      set({ error: `${errorPrefix}: ${formatted.message}`, syncing: false, loading: false });
     }
   },
 
