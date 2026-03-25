@@ -3,12 +3,8 @@
  * Implements all TMDb API endpoints with retry logic and request cancellation
  */
 
+import { z } from 'zod';
 import { APIError, NetworkError } from './errors';
-import {
-  TMDbDiscoverResponse,
-  TMDbVideosResponse,
-  TMDbReviewsResponse,
-} from './types';
 import { API, IMAGE_SIZES, PLACEHOLDERS } from '../constants';
 import { withRetry } from '../utils/retry';
 import { logWarn, isAbortError } from '../utils/errorHandler';
@@ -17,6 +13,10 @@ import {
   TMDbVideosResponseSchema,
   TMDbReviewsResponseSchema,
 } from '../validation/schemas';
+
+type TMDbDiscoverResponse = z.infer<typeof TMDbDiscoverResponseSchema>;
+type TMDbVideosResponse = z.infer<typeof TMDbVideosResponseSchema>;
+type TMDbReviewsResponse = z.infer<typeof TMDbReviewsResponseSchema>;
 
 /**
  * TMDb API configuration
@@ -117,9 +117,7 @@ export class TMDbService {
       },
       signal
     );
-    // Validate and cast - Zod schemas are more permissive with optionals
-    TMDbDiscoverResponseSchema.parse(data);
-    return data as TMDbDiscoverResponse;
+    return TMDbDiscoverResponseSchema.parse(data);
   }
 
   /**
@@ -143,8 +141,7 @@ export class TMDbService {
       },
       signal
     );
-    TMDbDiscoverResponseSchema.parse(data);
-    return data as TMDbDiscoverResponse;
+    return TMDbDiscoverResponseSchema.parse(data);
   }
 
   /**
@@ -164,8 +161,7 @@ export class TMDbService {
       {},
       signal
     );
-    TMDbVideosResponseSchema.parse(data);
-    return data as TMDbVideosResponse;
+    return TMDbVideosResponseSchema.parse(data);
   }
 
   /**
@@ -187,8 +183,7 @@ export class TMDbService {
       { page: page.toString() },
       signal
     );
-    TMDbReviewsResponseSchema.parse(data);
-    return data as TMDbReviewsResponse;
+    return TMDbReviewsResponseSchema.parse(data);
   }
 
   /**
