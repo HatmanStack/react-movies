@@ -27,7 +27,7 @@ export const MovieDetailsSchema = z.object({
   popular: z.boolean(),
 });
 
-export type ValidatedMovieDetails = z.infer<typeof MovieDetailsSchema>;
+
 
 /**
  * VideoDetails validation schema
@@ -44,7 +44,7 @@ export const VideoDetailsSchema = z.object({
   type: z.string(),
 });
 
-export type ValidatedVideoDetails = z.infer<typeof VideoDetailsSchema>;
+
 
 /**
  * ReviewDetails validation schema
@@ -56,7 +56,7 @@ export const ReviewDetailsSchema = z.object({
   content: z.string(),
 });
 
-export type ValidatedReviewDetails = z.infer<typeof ReviewDetailsSchema>;
+
 
 // ============================================================================
 // TMDb API RESPONSE SCHEMAS
@@ -83,7 +83,7 @@ export const TMDbMovieSchema = z.object({
   video: z.boolean().optional(),
 });
 
-export type ValidatedTMDbMovie = z.infer<typeof TMDbMovieSchema>;
+
 
 /**
  * TMDb paginated response schema
@@ -95,7 +95,7 @@ export const TMDbDiscoverResponseSchema = z.object({
   total_results: z.number().int().nonnegative(),
 });
 
-export type ValidatedTMDbDiscoverResponse = z.infer<typeof TMDbDiscoverResponseSchema>;
+
 
 /**
  * TMDb Video response schema
@@ -113,7 +113,7 @@ export const TMDbVideoSchema = z.object({
   published_at: z.string().optional(),
 });
 
-export type ValidatedTMDbVideo = z.infer<typeof TMDbVideoSchema>;
+
 
 /**
  * TMDb Videos response schema
@@ -123,7 +123,7 @@ export const TMDbVideosResponseSchema = z.object({
   results: z.array(TMDbVideoSchema),
 });
 
-export type ValidatedTMDbVideosResponse = z.infer<typeof TMDbVideosResponseSchema>;
+
 
 /**
  * TMDb Review response schema
@@ -145,7 +145,7 @@ export const TMDbReviewSchema = z.object({
     .optional(),
 });
 
-export type ValidatedTMDbReview = z.infer<typeof TMDbReviewSchema>;
+
 
 /**
  * TMDb Reviews response schema
@@ -158,7 +158,7 @@ export const TMDbReviewsResponseSchema = z.object({
   total_results: z.number().int().nonnegative(),
 });
 
-export type ValidatedTMDbReviewsResponse = z.infer<typeof TMDbReviewsResponseSchema>;
+
 
 // ============================================================================
 // YOUTUBE API RESPONSE SCHEMAS
@@ -201,114 +201,5 @@ export const YouTubeVideoResponseSchema = z.object({
   items: z.array(YouTubeVideoItemSchema),
 });
 
-export type ValidatedYouTubeVideoResponse = z.infer<typeof YouTubeVideoResponseSchema>;
 
-// ============================================================================
-// VALIDATION UTILITIES
-// ============================================================================
 
-/**
- * Validation result type
- */
-export type ValidationResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: z.ZodError };
-
-/**
- * Safe parse with detailed error info
- */
-export function validateSafe<T>(
-  schema: z.ZodSchema<T>,
-  data: unknown
-): ValidationResult<T> {
-  const result = schema.safeParse(data);
-  if (result.success) {
-    return { success: true, data: result.data };
-  }
-  return { success: false, error: result.error };
-}
-
-/**
- * Parse and throw on validation error
- */
-export function validate<T>(schema: z.ZodSchema<T>, data: unknown): T {
-  return schema.parse(data);
-}
-
-/**
- * Parse with fallback on validation error
- */
-export function validateWithFallback<T>(
-  schema: z.ZodSchema<T>,
-  data: unknown,
-  fallback: T
-): T {
-  const result = schema.safeParse(data);
-  return result.success ? result.data : fallback;
-}
-
-/**
- * Validate array with partial success (filter out invalid items)
- */
-export function validateArray<T>(
-  itemSchema: z.ZodSchema<T>,
-  data: unknown[]
-): T[] {
-  return data
-    .map(item => itemSchema.safeParse(item))
-    .filter((result): result is { success: true; data: T } => result.success)
-    .map(result => result.data);
-}
-
-/**
- * Validate TMDb discover response
- */
-export function validateTMDbDiscoverResponse(data: unknown): ValidatedTMDbDiscoverResponse {
-  return validate(TMDbDiscoverResponseSchema, data);
-}
-
-/**
- * Validate TMDb videos response
- */
-export function validateTMDbVideosResponse(data: unknown): ValidatedTMDbVideosResponse {
-  return validate(TMDbVideosResponseSchema, data);
-}
-
-/**
- * Validate TMDb reviews response
- */
-export function validateTMDbReviewsResponse(data: unknown): ValidatedTMDbReviewsResponse {
-  return validate(TMDbReviewsResponseSchema, data);
-}
-
-/**
- * Validate movie details from storage
- */
-export function validateMovieDetails(data: unknown): ValidatedMovieDetails | null {
-  const result = MovieDetailsSchema.safeParse(data);
-  return result.success ? result.data : null;
-}
-
-/**
- * Validate movie details array from storage
- */
-export function validateMovieDetailsArray(data: unknown): ValidatedMovieDetails[] {
-  if (!Array.isArray(data)) return [];
-  return validateArray(MovieDetailsSchema, data);
-}
-
-/**
- * Validate video details array from storage
- */
-export function validateVideoDetailsArray(data: unknown): ValidatedVideoDetails[] {
-  if (!Array.isArray(data)) return [];
-  return validateArray(VideoDetailsSchema, data);
-}
-
-/**
- * Validate review details array from storage
- */
-export function validateReviewDetailsArray(data: unknown): ValidatedReviewDetails[] {
-  if (!Array.isArray(data)) return [];
-  return validateArray(ReviewDetailsSchema, data);
-}
