@@ -20,7 +20,7 @@ const CREATE_MOVIE_DETAILS_TABLE = `
     overview TEXT,
     poster_path TEXT,
     release_date TEXT,
-    vote_average INTEGER,
+    vote_average REAL,
     vote_count INTEGER,
     popularity REAL,
     original_language TEXT,
@@ -117,4 +117,4 @@ export const SCHEMA_STATEMENTS = [
  * Current database version
  * Increment this when schema changes are made
  */
-export const CURRENT_DB_VERSION = 1;
+export const CURRENT_DB_VERSION = 2;

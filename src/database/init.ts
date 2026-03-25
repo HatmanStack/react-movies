@@ -61,6 +61,17 @@ export async function initDatabase(): Promise<void> {
       await db.runAsync('INSERT INTO database_version (version) VALUES (?)', [
         CURRENT_DB_VERSION,
       ]);
+    } else if (versionRow.version < CURRENT_DB_VERSION) {
+      // Migration: drop and recreate movie_details (it is a cache of API data)
+      await db.execAsync('DROP TABLE IF EXISTS movie_details');
+      // Recreate with the updated schema
+      for (const statement of SCHEMA_STATEMENTS) {
+        await db.execAsync(statement);
+      }
+      await db.runAsync('UPDATE database_version SET version = ?', [
+        CURRENT_DB_VERSION,
+      ]);
+      console.log(`Database migrated from version ${versionRow.version} to ${CURRENT_DB_VERSION}`);
     }
 
     console.log('Database initialized successfully');
