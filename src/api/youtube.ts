@@ -4,10 +4,10 @@
  * Includes retry logic and request cancellation support
  */
 
-import { YouTubeVideoResponse } from './types';
 import { API } from '../constants';
 import { withRetry } from '../utils/retry';
 import { logWarn, isAbortError } from '../utils/errorHandler';
+import { YouTubeVideoResponseSchema } from '../validation/schemas';
 
 /**
  * YouTube API configuration
@@ -60,7 +60,18 @@ export class YouTubeService {
         throw new Error(`YouTube API request failed: ${response.statusText}`);
       }
 
-      const data = (await response.json()) as YouTubeVideoResponse;
+      const rawData = await response.json();
+      const result = YouTubeVideoResponseSchema.safeParse(rawData);
+
+      if (!result.success) {
+        logWarn('YouTube API response validation failed', 'YouTubeService', {
+          videoKey,
+          error: result.error.message,
+        });
+        return this.getDefaultThumbnail(videoKey);
+      }
+
+      const data = result.data;
 
       // Extract high-quality thumbnail
       if (data.items && data.items.length > 0) {
