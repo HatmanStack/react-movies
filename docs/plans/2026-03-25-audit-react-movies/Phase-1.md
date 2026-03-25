@@ -54,14 +54,14 @@ Remove all dead scaffold code, unused dependencies, and unused exports identifie
 4. Run `npm test` to verify no tests depend on deleted files.
 
 **Verification Checklist:**
-- [ ] `app/(tabs)/` directory no longer exists
-- [ ] `components/` directory (root-level) no longer exists
-- [ ] `constants/` directory (root-level) no longer exists
-- [ ] `app/modal.tsx` no longer exists
-- [ ] `app/+not-found.tsx` no longer exists
-- [ ] `app/_layout.tsx` does not reference deleted routes
-- [ ] `npm run type-check` passes
-- [ ] `npm test` passes
+- [x] `app/(tabs)/` directory no longer exists
+- [x] `components/` directory (root-level) no longer exists
+- [x] `constants/` directory (root-level) no longer exists
+- [x] `app/modal.tsx` no longer exists
+- [x] `app/+not-found.tsx` no longer exists
+- [x] `app/_layout.tsx` does not reference deleted routes
+- [x] `npm run type-check` passes
+- [x] `npm test` passes
 
 **Commit Message Template:**
 ```
@@ -104,11 +104,11 @@ of the active app.
 **Important:** Be conservative. If a dependency might be a peer dep of expo-router, react-native-paper, or react-native-reanimated, keep it. Check by running `npm ls <package-name>` to see what depends on it.
 
 **Verification Checklist:**
-- [ ] Each removed dependency verified as genuinely unused (not a peer dep)
-- [ ] `npm install` succeeds without peer dep warnings for removed packages
-- [ ] `npm run lint` passes
-- [ ] `npm run type-check` passes
-- [ ] `npm test` passes
+- [x] Each removed dependency verified as genuinely unused (not a peer dep)
+- [x] `npm install` succeeds without peer dep warnings for removed packages
+- [x] `npm run lint` passes
+- [x] `npm run type-check` passes
+- [x] `npm test` passes
 - [ ] `npx expo start --web` does not crash on startup (if you can test this)
 
 **Commit Message Template:**
@@ -139,10 +139,10 @@ dependencies identified by knip scan.
 6. If any tests import these functions, update those tests.
 
 **Verification Checklist:**
-- [ ] All unused validation functions removed
-- [ ] No remaining imports reference deleted functions
-- [ ] `npm run type-check` passes
-- [ ] `npm test` passes
+- [x] All unused validation functions removed
+- [x] No remaining imports reference deleted functions
+- [x] `npm run type-check` passes
+- [x] `npm test` passes
 
 **Commit Message Template:**
 ```
@@ -176,11 +176,11 @@ The TMDb service calls schema.parse() directly.
 4. For the duplicated `isRateLimitError`/`isNetworkError` between `retry.ts` and `errorHandler.ts`: keep the version in `errorHandler.ts` (which is the canonical error handling module) and remove the duplicate from `retry.ts`. Update any imports if needed.
 
 **Verification Checklist:**
-- [ ] knip unused exports count significantly reduced
-- [ ] No functional code removed (only truly dead exports)
-- [ ] Duplicate `isRateLimitError`/`isNetworkError` consolidated
-- [ ] `npm run type-check` passes
-- [ ] `npm test` passes
+- [x] knip unused exports count significantly reduced
+- [x] No functional code removed (only truly dead exports)
+- [x] Duplicate `isRateLimitError`/`isNetworkError` consolidated
+- [x] `npm run type-check` passes
+- [x] `npm test` passes
 
 **Commit Message Template:**
 ```
@@ -210,11 +210,11 @@ duplicate isRateLimitError/isNetworkError into errorHandler.ts.
 3. Run verification commands.
 
 **Verification Checklist:**
-- [ ] `package.json` name is `"react-movies"`
-- [ ] `app.json` has no placeholder owner
-- [ ] `app.json` githubUrl points to correct repo
-- [ ] `npm run lint` passes
-- [ ] `npm test` passes
+- [x] `package.json` name is `"react-movies"`
+- [x] `app.json` has no placeholder owner
+- [x] `app.json` githubUrl points to correct repo
+- [x] `npm run lint` passes
+- [x] `npm test` passes
 
 **Commit Message Template:**
 ```
