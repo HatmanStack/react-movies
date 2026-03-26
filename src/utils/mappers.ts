@@ -111,16 +111,41 @@ export async function mapTMDbVideosToVideoDetails(
   videos: TMDbVideo[],
   movieId: number
 ): Promise<Omit<VideoDetails, 'identity'>[]> {
-  // Fetch all thumbnails in parallel
-  const thumbnailPromises = videos.map(video =>
-    YouTubeService.getVideoThumbnail(video.key)
+  // Fetch thumbnails with concurrency limit to avoid overwhelming the API
+  const thumbnails = await mapWithConcurrency(
+    videos,
+    (video) => YouTubeService.getVideoThumbnail(video.key),
+    5
   );
-  const thumbnails = await Promise.all(thumbnailPromises);
 
   // Map with fetched thumbnails
   return videos.map((video, index) =>
     mapTMDbToVideoDetails(video, movieId, thumbnails[index])
   );
+}
+
+/**
+ * Execute async operations with a concurrency limit.
+ * Workers pull from a shared index to maintain result ordering.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  concurrency: number
+): Promise<R[]> {
+  const results: R[] = [];
+  let index = 0;
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    async () => {
+      while (index < items.length) {
+        const i = index++;
+        results[i] = await fn(items[i]);
+      }
+    }
+  );
+  await Promise.all(workers);
+  return results;
 }
 
 /**
