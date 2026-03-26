@@ -9,26 +9,27 @@ pillar_overrides: {}
 # Repo Evaluation: react-movies
 
 ## Configuration
+
 - **Role Level:** Senior Developer
 - **Focus Areas:** Balanced evaluation across all pillars
-- **Exclusions:** Standard (vendor, generated, node_modules, __pycache__)
+- **Exclusions:** Standard (vendor, generated, node_modules, **pycache**)
 
 ## Combined Scorecard
 
-| # | Lens | Pillar | Score | Target | Status |
-|---|------|--------|-------|--------|--------|
-| 1 | Hire | Problem-Solution Fit | 7/10 | 9 | NEEDS WORK |
-| 2 | Hire | Architecture | 8/10 | 9 | NEEDS WORK |
-| 3 | Hire | Code Quality | 8/10 | 9 | NEEDS WORK |
-| 4 | Hire | Creativity | 7/10 | 9 | NEEDS WORK |
-| 5 | Stress | Pragmatism | 8/10 | 9 | NEEDS WORK |
-| 6 | Stress | Defensiveness | 7/10 | 9 | NEEDS WORK |
-| 7 | Stress | Performance | 7/10 | 9 | NEEDS WORK |
-| 8 | Stress | Type Rigor | 8/10 | 9 | NEEDS WORK |
-| 9 | Day 2 | Test Value | 7/10 | 9 | NEEDS WORK |
-| 10 | Day 2 | Reproducibility | 7/10 | 9 | NEEDS WORK |
-| 11 | Day 2 | Git Hygiene | 4/10 | 9 | NEEDS WORK |
-| 12 | Day 2 | Onboarding | 6/10 | 9 | NEEDS WORK |
+| #   | Lens   | Pillar               | Score | Target | Status     |
+| --- | ------ | -------------------- | ----- | ------ | ---------- |
+| 1   | Hire   | Problem-Solution Fit | 7/10  | 9      | NEEDS WORK |
+| 2   | Hire   | Architecture         | 8/10  | 9      | NEEDS WORK |
+| 3   | Hire   | Code Quality         | 8/10  | 9      | NEEDS WORK |
+| 4   | Hire   | Creativity           | 7/10  | 9      | NEEDS WORK |
+| 5   | Stress | Pragmatism           | 8/10  | 9      | NEEDS WORK |
+| 6   | Stress | Defensiveness        | 7/10  | 9      | NEEDS WORK |
+| 7   | Stress | Performance          | 7/10  | 9      | NEEDS WORK |
+| 8   | Stress | Type Rigor           | 8/10  | 9      | NEEDS WORK |
+| 9   | Day 2  | Test Value           | 7/10  | 9      | NEEDS WORK |
+| 10  | Day 2  | Reproducibility      | 7/10  | 9      | NEEDS WORK |
+| 11  | Day 2  | Git Hygiene          | 4/10  | 9      | NEEDS WORK |
+| 12  | Day 2  | Onboarding           | 6/10  | 9      | NEEDS WORK |
 
 **Pillars at target:** 0/12
 **Pillars needing work:** 12/12
@@ -38,18 +39,19 @@ pillar_overrides: {}
 ## Hire Evaluation -- The Pragmatist
 
 ### VERDICT
+
 - **Decision:** HIRE
 - **Overall Grade:** B+
 - **One-Line:** Well-structured cross-platform movie browser with thoughtful defensive coding, slightly over-documented for its scope.
 
 ### SCORECARD
 
-| Pillar | Score | Evidence |
-|--------|-------|----------|
-| Problem-Solution Fit | 7/10 | `package.json:16-41` -- Expo + SQLite + AsyncStorage + Zustand + Zod + Reanimated for a movie browser is justifiable but leans heavy. The dual-storage pattern (`src/database/queries.ts:37` platform branching, `src/database/webStorage.ts` full AsyncStorage reimplementation) adds ~400 lines for web compat. Zod validation on all API responses (`src/api/tmdb.ts:121-122`) is production-grade but the validate-then-cast pattern (parse, discard result, cast `as`) wastes the validation. |
-| Architecture | 8/10 | `src/store/movieStore.ts:34-60` -- Clean Zustand interface, proper separation between API (`src/api/`), database (`src/database/`), store (`src/store/`), and presentation (`app/`, `src/components/`). Mapper layer (`src/utils/mappers.ts`) cleanly decouples API shapes from domain models. Constants centralized (`src/constants/index.ts`). Could survive 10x features. Concern: `app/details/[id].tsx:85-202` has a 120-line `loadMovieDetails` callback mixing cache reads, API calls, DB writes, and state updates -- this should be in the store or a service, not the component. |
-| Code Quality | 8/10 | `src/utils/retry.ts:65-80` -- Exponential backoff with jitter, abort support, configurable retry predicate. `src/utils/errorHandler.ts:202-252` -- Error formatting by type with severity/retryable classification. Zero `any` types in src/. Zero TODO/FIXME. Console usage gated behind `__DEV__` (`errorHandler.ts:109`). One concern: `MovieCard.tsx:42` hardcodes `https://image.tmdb.org/t/p/w342` instead of using `TMDbService.getPosterUrl()`. |
-| Creativity | 7/10 | `src/database/webStorage.ts:1-27` -- Indexed storage architecture with per-entity keys and category index sets is a smart solution for AsyncStorage's limitations. `app/index.tsx:57-78` -- AbortController cleanup on mount/unmount prevents stale requests. `src/store/movieStore.ts:429-431` -- Preserving favorites during API refresh is a thoughtful UX detail. The `sleep` function in `retry.ts:85-99` properly cleans up timers on abort. No clever-bad code found. |
+| Pillar               | Score | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| -------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Problem-Solution Fit | 7/10  | `package.json:16-41` -- Expo + SQLite + AsyncStorage + Zustand + Zod + Reanimated for a movie browser is justifiable but leans heavy. The dual-storage pattern (`src/database/queries.ts:37` platform branching, `src/database/webStorage.ts` full AsyncStorage reimplementation) adds ~400 lines for web compat. Zod validation on all API responses (`src/api/tmdb.ts:121-122`) is production-grade but the validate-then-cast pattern (parse, discard result, cast `as`) wastes the validation.                                                                                         |
+| Architecture         | 8/10  | `src/store/movieStore.ts:34-60` -- Clean Zustand interface, proper separation between API (`src/api/`), database (`src/database/`), store (`src/store/`), and presentation (`app/`, `src/components/`). Mapper layer (`src/utils/mappers.ts`) cleanly decouples API shapes from domain models. Constants centralized (`src/constants/index.ts`). Could survive 10x features. Concern: `app/details/[id].tsx:85-202` has a 120-line `loadMovieDetails` callback mixing cache reads, API calls, DB writes, and state updates -- this should be in the store or a service, not the component. |
+| Code Quality         | 8/10  | `src/utils/retry.ts:65-80` -- Exponential backoff with jitter, abort support, configurable retry predicate. `src/utils/errorHandler.ts:202-252` -- Error formatting by type with severity/retryable classification. Zero `any` types in src/. Zero TODO/FIXME. Console usage gated behind `__DEV__` (`errorHandler.ts:109`). One concern: `MovieCard.tsx:42` hardcodes `https://image.tmdb.org/t/p/w342` instead of using `TMDbService.getPosterUrl()`.                                                                                                                                    |
+| Creativity           | 7/10  | `src/database/webStorage.ts:1-27` -- Indexed storage architecture with per-entity keys and category index sets is a smart solution for AsyncStorage's limitations. `app/index.tsx:57-78` -- AbortController cleanup on mount/unmount prevents stale requests. `src/store/movieStore.ts:429-431` -- Preserving favorites during API refresh is a thoughtful UX detail. The `sleep` function in `retry.ts:85-99` properly cleans up timers on abort. No clever-bad code found.                                                                                                               |
 
 ### HIGHLIGHTS
 
@@ -93,18 +95,19 @@ pillar_overrides: {}
 ## Stress Evaluation -- The Oncall Engineer
 
 ### VERDICT
+
 - **Decision:** SENIOR HIRE
 - **Seniority Alignment:** Yes. The technical depth, architecture choices, and defensive patterns are consistent with a senior developer who has operated production systems.
 - **One-Line:** Solid production instincts across the board; a handful of resource leaks and missing atomicity guards would give me a restless night, but overall this developer writes code that survives contact with reality.
 
 ### SCORECARD
 
-| Pillar | Score | Evidence |
-|--------|-------|----------|
-| Pragmatism | 8/10 | `src/constants/index.ts:1-144` -- all magic values extracted into typed constants with `as const`. `src/utils/retry.ts:117-166` -- retry with jitter is exactly the right level of infrastructure for this use case. `src/database/webStorage.ts:1-426` -- the indexed storage layer is well-motivated but the dual-platform branching throughout `queries.ts` adds real maintenance cost. |
-| Defensiveness | 7/10 | `src/api/tmdb.ts:44-97` -- pre-flight abort checks, typed error classification, structured retry callbacks. `src/store/movieStore.ts:127-136` -- every catch block logs with context and formats for users. `src/utils/retry.ts:85-99` -- sleep abort listener is **never cleaned up** on resolve, leaking event listeners on long-running retry chains. `src/database/webStorage.ts:36` -- swallowed `catch {}` in `safeJsonParse` silently eats corrupt data with no logging. |
-| Performance | 7/10 | `app/index.tsx:206-209` -- FlatList tuned with `removeClippedSubviews`, `maxToRenderPerBatch`, `windowSize`. `src/database/queries.ts:228-250` -- batch inserts use transactions. `src/database/webStorage.ts:148-156` -- batch web writes fire N+4 parallel `AsyncStorage.setItem` calls instead of using `multiSet`, which is O(N) round-trips on some platforms. `src/utils/mappers.ts:114-118` -- thumbnail fetching for videos uses unbounded `Promise.all`, no concurrency limit. |
-| Type Rigor | 8/10 | `tsconfig.json` -- `strict: true`, `noImplicitAny`, `strictNullChecks`, `noUnusedLocals`, `noUnusedParameters` all enabled. `src/validation/schemas.ts:15-28` -- Zod schemas enforce domain constraints (positive int IDs, vote_average 0-10). `src/api/tmdb.ts:69` -- raw `as T` cast after fetch, though mitigated by subsequent Zod parse at line 121. `app/details/[id].tsx:319` and `src/components/MovieCard.tsx:66` -- `as object` escape hatch for Reanimated shared transitions, unavoidable given the library's typing. |
+| Pillar        | Score | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pragmatism    | 8/10  | `src/constants/index.ts:1-144` -- all magic values extracted into typed constants with `as const`. `src/utils/retry.ts:117-166` -- retry with jitter is exactly the right level of infrastructure for this use case. `src/database/webStorage.ts:1-426` -- the indexed storage layer is well-motivated but the dual-platform branching throughout `queries.ts` adds real maintenance cost.                                                                                                                                        |
+| Defensiveness | 7/10  | `src/api/tmdb.ts:44-97` -- pre-flight abort checks, typed error classification, structured retry callbacks. `src/store/movieStore.ts:127-136` -- every catch block logs with context and formats for users. `src/utils/retry.ts:85-99` -- sleep abort listener is **never cleaned up** on resolve, leaking event listeners on long-running retry chains. `src/database/webStorage.ts:36` -- swallowed `catch {}` in `safeJsonParse` silently eats corrupt data with no logging.                                                   |
+| Performance   | 7/10  | `app/index.tsx:206-209` -- FlatList tuned with `removeClippedSubviews`, `maxToRenderPerBatch`, `windowSize`. `src/database/queries.ts:228-250` -- batch inserts use transactions. `src/database/webStorage.ts:148-156` -- batch web writes fire N+4 parallel `AsyncStorage.setItem` calls instead of using `multiSet`, which is O(N) round-trips on some platforms. `src/utils/mappers.ts:114-118` -- thumbnail fetching for videos uses unbounded `Promise.all`, no concurrency limit.                                           |
+| Type Rigor    | 8/10  | `tsconfig.json` -- `strict: true`, `noImplicitAny`, `strictNullChecks`, `noUnusedLocals`, `noUnusedParameters` all enabled. `src/validation/schemas.ts:15-28` -- Zod schemas enforce domain constraints (positive int IDs, vote_average 0-10). `src/api/tmdb.ts:69` -- raw `as T` cast after fetch, though mitigated by subsequent Zod parse at line 121. `app/details/[id].tsx:319` and `src/components/MovieCard.tsx:66` -- `as object` escape hatch for Reanimated shared transitions, unavoidable given the library's typing. |
 
 ### CRITICAL FAILURE POINTS
 
@@ -159,25 +162,29 @@ pillar_overrides: {}
 ## Day 2 Evaluation -- The Team Lead
 
 ### VERDICT
+
 - **Decision:** COLLABORATOR
 - **Collaboration Score:** Med-High
 - **One-Line:** Solid test foundation and CI, but the git history reveals a code-gen origin with thin onboarding paths.
 
 ### SCORECARD
-| Pillar | Score | Evidence |
-|--------|-------|----------|
-| Test Value | 7/10 | `__tests__/store/movieStore.test.ts` tests real behavior (optimistic updates, rollback on DB error, dedup logic); `__tests__/database/queries.test.ts` includes SQL injection prevention. Two placeholder tests drag it down: `MovieCard.test.tsx:139` and `VideoCard.test.tsx:113` both use `expect(true).toBe(true)`. |
-| Reproducibility | 7/10 | `package-lock.json` committed, CI in `.github/workflows/ci.yml` runs lint->type-check->test in correct order with `npm ci`. No `.env.example`, no Dockerfile, no devcontainer, no pre-commit hooks. |
-| Git Hygiene | 4/10 | Early history is opaque: `Init` commit adds 60+ files including all tests, followed by `final touches`, `icon`, `link`, `Deployed`. One mega-commit `0f19539` touches the entire architecture. Recent commits use conventional prefixes (`fix:`) which is an improvement. |
-| Onboarding | 6/10 | `CLAUDE.md` is excellent for AI-assisted development with all commands documented. `README.md` has outdated clone path (`android-movies/Migration/expo-project` vs actual repo structure). No `.env.example` file, no CONTRIBUTING guide. |
+
+| Pillar          | Score | Evidence                                                                                                                                                                                                                                                                                                                |
+| --------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Test Value      | 7/10  | `__tests__/store/movieStore.test.ts` tests real behavior (optimistic updates, rollback on DB error, dedup logic); `__tests__/database/queries.test.ts` includes SQL injection prevention. Two placeholder tests drag it down: `MovieCard.test.tsx:139` and `VideoCard.test.tsx:113` both use `expect(true).toBe(true)`. |
+| Reproducibility | 7/10  | `package-lock.json` committed, CI in `.github/workflows/ci.yml` runs lint->type-check->test in correct order with `npm ci`. No `.env.example`, no Dockerfile, no devcontainer, no pre-commit hooks.                                                                                                                     |
+| Git Hygiene     | 4/10  | Early history is opaque: `Init` commit adds 60+ files including all tests, followed by `final touches`, `icon`, `link`, `Deployed`. One mega-commit `0f19539` touches the entire architecture. Recent commits use conventional prefixes (`fix:`) which is an improvement.                                               |
+| Onboarding      | 6/10  | `CLAUDE.md` is excellent for AI-assisted development with all commands documented. `README.md` has outdated clone path (`android-movies/Migration/expo-project` vs actual repo structure). No `.env.example` file, no CONTRIBUTING guide.                                                                               |
 
 ### RED FLAGS
+
 - **Placeholder tests.** `__tests__/components/MovieCard.test.tsx:127-141` "memoization prevents unnecessary re-renders" test asserts `expect(true).toBe(true)`. Same pattern in `VideoCard.test.tsx:113`. These are checkbox tests that document nothing and give false coverage confidence.
 - **No `.env.example`.** The `.env` file is gitignored (correctly), but there is no `.env.example` or `.env.template`.
 - **Monolithic initial commit.** Commit `6537922` ("Init") adds every source file, test, and config in a single commit.
 - **Integration tests test state, not rendering.** `__tests__/integration/movieFlow.test.tsx:126-144` has two "integration" tests that never render a component. They just call `useMovieStore.setState()` and read it back.
 
 ### HIGHLIGHTS
+
 - **Process Win:** The database test suite (`__tests__/database/queries.test.ts`) is genuinely valuable with in-memory SQLite, CRUD operations, edge cases, and SQL injection prevention.
 - **Process Win:** `jest.setup.js` provides a thorough in-memory mock of expo-sqlite that simulates real table behavior.
 - **Process Win:** CI pipeline is clean and correct: checkout -> install -> lint -> type-check -> test -> coverage upload. Dependabot configured.
@@ -192,8 +199,8 @@ pillar_overrides: {}
   - Estimated complexity: LOW
 
 - **Reproducibility (current: 7/10, target: 9/10)**
-  - Add `.env.example` with placeholder values.
-  - Add pre-commit hook via husky or lint-staged.
+  - ~~Add `.env.example` with placeholder values.~~ (Done: Phase 5)
+  - ~~Add pre-commit hook via husky or lint-staged.~~ (Done: Phase 4, husky + lint-staged in package.json)
   - Consider `.devcontainer/devcontainer.json`.
   - Estimated complexity: LOW
 
@@ -215,17 +222,20 @@ pillar_overrides: {}
 Merged and deduplicated across all 3 evaluators, prioritized by lowest score first:
 
 ### Priority 1: Git Hygiene (4/10)
+
 - Enforce conventional commits going forward
 - Use feature branches and squash merges
 - **Complexity:** MEDIUM (process change)
 
 ### Priority 2: Onboarding (6/10)
+
 - Fix README clone path and outdated references
 - Add `.env.example`
 - Add Development section to README with human-oriented setup instructions
 - **Complexity:** LOW
 
 ### Priority 3: Defensiveness + Performance + Test Value + Creativity (7/10 each)
+
 - Fix abort listener leak in `src/utils/retry.ts:85-99`
 - Add logging to `safeJsonParse` in `src/database/webStorage.ts:36`
 - Build database migration logic in `src/database/init.ts`
@@ -239,6 +249,7 @@ Merged and deduplicated across all 3 evaluators, prioritized by lowest score fir
 - **Complexity:** LOW-MEDIUM
 
 ### Priority 4: Problem-Solution Fit + Architecture + Code Quality + Pragmatism + Type Rigor + Reproducibility (7-8/10)
+
 - Fix Zod validate-then-cast anti-pattern in `tmdb.ts`
 - Delete dead scaffold code (12+ files in `app/(tabs)/`, `components/`, `constants/`)
 - Extract `loadMovieDetails` from details component into store/service

@@ -20,10 +20,11 @@ export {
 SplashScreen.preventAutoHideAsync();
 
 // Validate environment variables at startup (fail fast on missing API keys)
+let envValidationError: Error | null = null;
 try {
   validateEnvironment();
-} catch {
-  // Error already logged by validateEnvironment; app will fail on first API call
+} catch (e) {
+  envValidationError = e instanceof Error ? e : new Error(String(e));
 }
 
 // Customize Material Design 3 theme to match Android app
@@ -45,6 +46,7 @@ export default function RootLayout(): React.JSX.Element | null {
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
+    if (envValidationError) throw envValidationError;
     if (error) throw error;
   }, [error]);
 

@@ -77,7 +77,7 @@ npm run test:coverage       # With coverage report
 
 Use conventional commits:
 
-```
+```text
 type(scope): description
 ```
 
@@ -86,6 +86,7 @@ Types: `fix`, `refactor`, `chore`, `test`, `docs`, `ci`
 Scopes: `scaffold`, `api`, `store`, `database`, `retry`, `components`, `tests`, `ci`, `docs`
 
 Examples:
+
 - `chore(scaffold): remove dead Expo template files`
 - `fix(api): use Zod parse return values in TMDb service`
 - `refactor(store): consolidate syncMoviesWithAPI and refreshMovies`

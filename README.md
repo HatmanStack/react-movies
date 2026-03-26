@@ -46,8 +46,9 @@ A cross-platform mobile app for discovering movies, powered by the TMDb API.
 5.  **API Keys:** Copy `.env.example` to `.env` and fill in your API keys:
     ```env
     EXPO_PUBLIC_TMDB_API_KEY=your_tmdb_api_key_here
-    EXPO_PUBLIC_YOUTUBE_API_KEY=your_youtube_api_key_here
+    EXPO_PUBLIC_YOUTUBE_API_KEY=your_youtube_api_key_here  # optional
     ```
+    Only `EXPO_PUBLIC_TMDB_API_KEY` is required. `EXPO_PUBLIC_YOUTUBE_API_KEY` can be omitted; trailer thumbnails will fall back to defaults.
 6.  **Run:** `npx expo start` and scan the QR code with the Expo Go app, or press `w` for web.
 
 ## License

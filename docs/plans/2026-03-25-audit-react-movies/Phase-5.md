@@ -5,6 +5,7 @@
 Fix all documentation drift, gaps, and stale references found in the doc audit. Add `.env.example` for reproducibility. Update CLAUDE.md to reflect codebase changes from Phases 1-4.
 
 **Success criteria:**
+
 - README has correct clone URL, path, prerequisites, and build instructions
 - `.env.example` exists with placeholder values
 - CLAUDE.md reflects the actual file structure (no references to deleted scaffold)
@@ -25,11 +26,13 @@ Fix all documentation drift, gaps, and stale references found in the doc audit. 
 **Goal:** The README has 5 issues from the doc audit: wrong clone URL, wrong path, deprecated expo-cli reference, misleading feature description, and wrong .env location.
 
 **Files to Modify:**
+
 - `README.md` - Rewrite the Building section and fix feature description
 
 **Prerequisites:** Phase 4 Task 4 (engines field, for correct Node version reference)
 
 **Implementation Steps:**
+
 1. Read the current `README.md`.
 2. Fix the following:
 
@@ -44,7 +47,8 @@ Fix all documentation drift, gaps, and stale references found in the doc audit. 
    - Change `.env` location from "in the `expo-project` root directory" to "in the project root directory".
 
 3. The rewritten Building section should look like:
-   ```markdown
+
+   ````markdown
    ## Building
 
    1.  **Prerequisites:** Node.js (20+) and npm.
@@ -57,9 +61,10 @@ Fix all documentation drift, gaps, and stale references found in the doc audit. 
        EXPO_PUBLIC_YOUTUBE_API_KEY=your_youtube_api_key_here
        ```
    6.  **Run:** `npx expo start` and scan the QR code with the Expo Go app, or press `w` for web.
-   ```
+   ````
 
 **Verification Checklist:**
+
 - [ ] Clone URL is `react-movies.git`
 - [ ] Navigate step is `cd react-movies`
 - [ ] No reference to `expo-cli` global install
@@ -68,7 +73,8 @@ Fix all documentation drift, gaps, and stale references found in the doc audit. 
 - [ ] Building instructions reference `.env.example`
 
 **Commit Message Template:**
-```
+
+```text
 docs(readme): fix clone URL, prerequisites, and build instructions
 
 Correct repository URL, remove deprecated expo-cli reference,
@@ -82,12 +88,15 @@ fix directory paths, and update Node.js version requirement.
 **Goal:** No `.env.example` exists, making it hard for new contributors to know which environment variables are needed. This was flagged in both the eval (Reproducibility) and doc audit.
 
 **Files to Create:**
+
 - `.env.example` - Template with placeholder values
 
 **Prerequisites:** None
 
 **Implementation Steps:**
+
 1. Create `.env.example` with:
+
    ```env
    # Required: TMDb API key (get one at https://www.themoviedb.org/settings/api)
    EXPO_PUBLIC_TMDB_API_KEY=your_tmdb_api_key_here
@@ -96,16 +105,19 @@ fix directory paths, and update Node.js version requirement.
    # Falls back to default thumbnails if not set
    EXPO_PUBLIC_YOUTUBE_API_KEY=your_youtube_api_key_here
    ```
+
 2. Verify `.env.example` is NOT in `.gitignore` (it should be committed, unlike `.env`).
 
 **Verification Checklist:**
+
 - [ ] `.env.example` exists at project root
 - [ ] Contains both API key placeholders with comments
 - [ ] Is NOT listed in `.gitignore`
 - [ ] README references it in the Building section
 
 **Commit Message Template:**
-```
+
+```text
 docs: add .env.example with API key placeholders
 
 Provide a template so new contributors know which
@@ -119,11 +131,13 @@ environment variables to configure.
 **Goal:** CLAUDE.md references the scaffold code that was deleted in Phase 1 (via the route listing) and is missing information about supporting files. Update it to reflect the current state.
 
 **Files to Modify:**
+
 - `CLAUDE.md` (project root) - Update Architecture section
 
 **Prerequisites:** Phases 1-4 complete
 
 **Implementation Steps:**
+
 1. Read the current `CLAUDE.md`.
 2. Update the Architecture section:
    - The route listing should only show the active routes: `app/index.tsx`, `app/details/[id].tsx`, `app/_layout.tsx`, `app/+html.tsx`.
@@ -135,13 +149,15 @@ environment variables to configure.
 5. Do NOT add exhaustive file-by-file documentation. CLAUDE.md is a quick reference, not a full API doc.
 
 **Verification Checklist:**
+
 - [ ] No references to deleted scaffold files
 - [ ] Route listing matches actual app routes
 - [ ] Architecture section reflects Phase 1-4 changes
 - [ ] File is concise and accurate
 
 **Commit Message Template:**
-```
+
+```text
 docs(claude): update CLAUDE.md to reflect audit remediation
 
 Remove references to deleted scaffold code. Update
@@ -156,23 +172,27 @@ env validation.
 **Goal:** `app.json` has a placeholder owner and wrong githubUrl. The owner placeholder was noted as stale in the doc audit. The githubUrl was fixed conceptually in Phase 1 Task 5 but verify it here.
 
 **Files to Modify:**
+
 - `app.json` - Verify/fix remaining issues
 
 **Prerequisites:** Phase 1 Task 5 (may have already fixed githubUrl)
 
 **Implementation Steps:**
+
 1. Read `app.json`.
 2. Verify `"githubUrl"` is `"https://github.com/HatmanStack/react-movies"`. If Phase 1 already fixed this, no change needed.
 3. Verify `"owner"` field: if it still says `"your-expo-username"`, remove the field entirely. The owner field is only needed for Expo Application Services (EAS) and a placeholder value is worse than no value.
 4. If both are already correct from Phase 1, skip this task.
 
 **Verification Checklist:**
+
 - [ ] No placeholder values in app.json
 - [ ] githubUrl points to correct repository
 - [ ] `npm run lint` passes
 
 **Commit Message Template:**
-```
+
+```text
 docs(config): verify app.json references are correct
 
 Ensure githubUrl and owner field are accurate after

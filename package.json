@@ -12,7 +12,7 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "prepare": "husky"
+    "prepare": "command -v husky >/dev/null 2>&1 && husky || true"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",

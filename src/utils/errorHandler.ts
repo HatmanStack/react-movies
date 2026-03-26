@@ -3,7 +3,7 @@
  * Provides consistent error handling, structured logging, and production observability
  */
 
-import { APIError, NetworkError, DatabaseError } from '../api/errors';
+import { APIError, NetworkError, DatabaseError } from "../api/errors";
 
 // ============================================================================
 // ERROR SEVERITY & FORMATTING
@@ -13,17 +13,17 @@ import { APIError, NetworkError, DatabaseError } from '../api/errors';
  * Error severity levels
  */
 enum ErrorSeverity {
-  DEBUG = 'debug',
-  INFO = 'info',
-  WARNING = 'warning',
-  ERROR = 'error',
-  CRITICAL = 'critical',
+  DEBUG = "debug",
+  INFO = "info",
+  WARNING = "warning",
+  ERROR = "error",
+  CRITICAL = "critical",
 }
 
 /**
  * Formatted error for display
  */
-interface FormattedError {
+export interface FormattedError {
   title: string;
   message: string;
   severity: ErrorSeverity;
@@ -51,9 +51,19 @@ interface LogEntry {
  */
 interface ErrorTracker {
   captureException: (error: unknown, extra?: Record<string, unknown>) => void;
-  captureMessage: (message: string, level: ErrorSeverity, extra?: Record<string, unknown>) => void;
-  setUser: (user: { id?: string; email?: string; username?: string } | null) => void;
-  addBreadcrumb: (breadcrumb: { category: string; message: string; level?: string }) => void;
+  captureMessage: (
+    message: string,
+    level: ErrorSeverity,
+    extra?: Record<string, unknown>,
+  ) => void;
+  setUser: (
+    user: { id?: string; email?: string; username?: string } | null,
+  ) => void;
+  addBreadcrumb: (breadcrumb: {
+    category: string;
+    message: string;
+    level?: string;
+  }) => void;
 }
 
 let errorTracker: ErrorTracker | null = null;
@@ -70,7 +80,7 @@ function createLogEntry(
   message: string,
   context?: string,
   data?: Record<string, unknown>,
-  error?: unknown
+  error?: unknown,
 ): LogEntry {
   return {
     timestamp: new Date().toISOString(),
@@ -88,16 +98,18 @@ function createLogEntry(
 function outputLog(entry: LogEntry): void {
   // Development: Console logging
   if (__DEV__) {
-    const prefix = `[${entry.level.toUpperCase()}]${entry.context ? ` [${entry.context}]` : ''}`;
-    const logFn = entry.level === ErrorSeverity.ERROR || entry.level === ErrorSeverity.CRITICAL
-      ? console.error
-      : entry.level === ErrorSeverity.WARNING
-        ? console.warn
-        : entry.level === ErrorSeverity.DEBUG
-          ? console.debug
-          : console.log;
+    const prefix = `[${entry.level.toUpperCase()}]${entry.context ? ` [${entry.context}]` : ""}`;
+    const logFn =
+      entry.level === ErrorSeverity.ERROR ||
+      entry.level === ErrorSeverity.CRITICAL
+        ? console.error
+        : entry.level === ErrorSeverity.WARNING
+          ? console.warn
+          : entry.level === ErrorSeverity.DEBUG
+            ? console.debug
+            : console.log;
 
-    logFn(prefix, entry.message, entry.data ?? '', entry.error ?? '');
+    logFn(prefix, entry.message, entry.data ?? "", entry.error ?? "");
   }
 
   // Production: Send to error tracking service
@@ -108,7 +120,10 @@ function outputLog(entry: LogEntry): void {
         message: entry.message,
         ...entry.data,
       });
-    } else if (entry.level === ErrorSeverity.ERROR || entry.level === ErrorSeverity.CRITICAL) {
+    } else if (
+      entry.level === ErrorSeverity.ERROR ||
+      entry.level === ErrorSeverity.CRITICAL
+    ) {
       errorTracker.captureMessage(entry.message, entry.level, {
         context: entry.context,
         ...entry.data,
@@ -116,7 +131,7 @@ function outputLog(entry: LogEntry): void {
     } else {
       // Add breadcrumb for non-error logs
       errorTracker.addBreadcrumb({
-        category: entry.context ?? 'app',
+        category: entry.context ?? "app",
         message: entry.message,
         level: entry.level,
       });
@@ -127,7 +142,11 @@ function outputLog(entry: LogEntry): void {
 /**
  * Log informational message
  */
-export function logInfo(message: string, context?: string, data?: Record<string, unknown>): void {
+export function logInfo(
+  message: string,
+  context?: string,
+  data?: Record<string, unknown>,
+): void {
   const entry = createLogEntry(ErrorSeverity.INFO, message, context, data);
   outputLog(entry);
 }
@@ -135,7 +154,11 @@ export function logInfo(message: string, context?: string, data?: Record<string,
 /**
  * Log warning message
  */
-export function logWarn(message: string, context?: string, data?: Record<string, unknown>): void {
+export function logWarn(
+  message: string,
+  context?: string,
+  data?: Record<string, unknown>,
+): void {
   const entry = createLogEntry(ErrorSeverity.WARNING, message, context, data);
   outputLog(entry);
 }
@@ -154,7 +177,7 @@ export function logError(error: unknown, context?: string): void {
     formatted.message,
     context,
     { title: formatted.title, retryable: formatted.retryable },
-    error
+    error,
   );
   outputLog(entry);
 }
@@ -173,11 +196,12 @@ export function formatError(error: unknown): FormattedError {
   // API Errors
   if (error instanceof APIError) {
     return {
-      title: 'API Error',
+      title: "API Error",
       message: getAPIErrorMessage(error),
-      severity: error.statusCode && error.statusCode >= 500
-        ? ErrorSeverity.ERROR
-        : ErrorSeverity.WARNING,
+      severity:
+        error.statusCode && error.statusCode >= 500
+          ? ErrorSeverity.ERROR
+          : ErrorSeverity.WARNING,
       retryable: error.statusCode !== 404,
     };
   }
@@ -185,8 +209,9 @@ export function formatError(error: unknown): FormattedError {
   // Network Errors
   if (error instanceof NetworkError) {
     return {
-      title: 'Network Error',
-      message: 'Unable to connect to the server. Please check your internet connection and try again.',
+      title: "Network Error",
+      message:
+        "Unable to connect to the server. Please check your internet connection and try again.",
       severity: ErrorSeverity.ERROR,
       retryable: true,
     };
@@ -195,8 +220,8 @@ export function formatError(error: unknown): FormattedError {
   // Database Errors
   if (error instanceof DatabaseError) {
     return {
-      title: 'Database Error',
-      message: 'Failed to access local data. Please try restarting the app.',
+      title: "Database Error",
+      message: "Failed to access local data. Please try restarting the app.",
       severity: ErrorSeverity.CRITICAL,
       retryable: true,
     };
@@ -205,7 +230,7 @@ export function formatError(error: unknown): FormattedError {
   // Standard Error objects
   if (error instanceof Error) {
     return {
-      title: 'Error',
+      title: "Error",
       message: error.message,
       severity: ErrorSeverity.ERROR,
       retryable: true,
@@ -214,8 +239,8 @@ export function formatError(error: unknown): FormattedError {
 
   // Unknown errors
   return {
-    title: 'Unknown Error',
-    message: 'An unexpected error occurred. Please try again.',
+    title: "Unknown Error",
+    message: "An unexpected error occurred. Please try again.",
     severity: ErrorSeverity.ERROR,
     retryable: true,
   };
@@ -231,21 +256,21 @@ function getAPIErrorMessage(error: APIError): string {
 
   switch (error.statusCode) {
     case 400:
-      return 'Invalid request. Please try again.';
+      return "Invalid request. Please try again.";
     case 401:
-      return 'Authentication required. Please check your API key.';
+      return "Authentication required. Please check your API key.";
     case 403:
-      return 'Access denied. Please check your permissions.';
+      return "Access denied. Please check your permissions.";
     case 404:
-      return 'The requested content was not found.';
+      return "The requested content was not found.";
     case 429:
-      return 'Too many requests. Please wait a moment and try again.';
+      return "Too many requests. Please wait a moment and try again.";
     case 500:
     case 502:
     case 503:
-      return 'Server error. Please try again later.';
+      return "Server error. Please try again later.";
     default:
-      return error.message || 'An error occurred while fetching data.';
+      return error.message || "An error occurred while fetching data.";
   }
 }
 
@@ -257,11 +282,11 @@ function getAPIErrorMessage(error: APIError): string {
  * Check if error is a cancellation (AbortError)
  */
 export function isAbortError(error: unknown): boolean {
-  if (error instanceof DOMException && error.name === 'AbortError') {
+  if (error instanceof DOMException && error.name === "AbortError") {
     return true;
   }
   if (error instanceof Error) {
-    return error.name === 'AbortError' || error.message.includes('aborted');
+    return error.name === "AbortError" || error.message.includes("aborted");
   }
   return false;
 }

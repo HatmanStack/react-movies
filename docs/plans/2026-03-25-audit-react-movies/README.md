@@ -10,21 +10,21 @@ Phases are sequenced: cleanup first (remove dead code and unused deps), then str
 
 ## Prerequisites
 
-- Node.js 24 (via nvm)
+- Node.js 20 or later (via nvm; CI uses 24)
 - `npm ci` to install dependencies
 - A `.env` file with `EXPO_PUBLIC_TMDB_API_KEY` set (for running the app; tests mock this)
 - Familiarity with: Expo Router, Zustand, Zod, expo-sqlite, AsyncStorage, Jest
 
 ## Phase Summary
 
-| Phase | Tag | Goal | Token Estimate |
-|-------|-----|------|----------------|
-| 0 | -- | Foundation: architecture decisions, conventions, testing strategy | ~5k |
-| 1 | [HYGIENIST] | Remove dead scaffold code, unused deps, unused exports | ~20k |
-| 2 | [IMPLEMENTER] | Fix API validation, retry leak, store duplication, DB schema, performance | ~35k |
-| 3 | [IMPLEMENTER] | Fix component/screen issues, improve tests | ~25k |
-| 4 | [FORTIFIER] | Add pre-commit hooks, env validation, conventional commits enforcement | ~15k |
-| 5 | [DOC-ENGINEER] | Fix README, CLAUDE.md, app.json; add .env.example | ~10k |
+| Phase | Tag            | Goal                                                                      | Token Estimate |
+| ----- | -------------- | ------------------------------------------------------------------------- | -------------- |
+| 0     | --             | Foundation: architecture decisions, conventions, testing strategy         | ~5k            |
+| 1     | [HYGIENIST]    | Remove dead scaffold code, unused deps, unused exports                    | ~20k           |
+| 2     | [IMPLEMENTER]  | Fix API validation, retry leak, store duplication, DB schema, performance | ~35k           |
+| 3     | [IMPLEMENTER]  | Fix component/screen issues, improve tests                                | ~25k           |
+| 4     | [FORTIFIER]    | Add pre-commit hooks, env validation, conventional commits enforcement    | ~15k           |
+| 5     | [DOC-ENGINEER] | Fix README, CLAUDE.md, app.json; add .env.example                         | ~10k           |
 
 ## Navigation
 

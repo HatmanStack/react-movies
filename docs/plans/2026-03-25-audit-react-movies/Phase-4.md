@@ -65,7 +65,7 @@ Add preventive guardrails: pre-commit hooks for lint/format/type-check, startup 
 
 **Commit Message Template:**
 
-```
+```text
 ci(hooks): add pre-commit hooks with husky and lint-staged
 
 Run ESLint and Prettier on staged files before every commit
@@ -108,7 +108,7 @@ to catch issues early.
 
 **Commit Message Template:**
 
-```
+```text
 ci(hooks): enforce conventional commits with commitlint
 
 Validate commit messages against conventional commits format
@@ -178,7 +178,7 @@ to maintain consistent git history going forward.
 
 **Commit Message Template:**
 
-```
+```text
 fix(env): add startup environment variable validation
 
 Fail fast with clear error message when TMDB API key is
@@ -216,7 +216,7 @@ missing instead of silently failing on first API call.
 
 **Commit Message Template:**
 
-```
+```text
 chore(config): add engines field to package.json
 
 Specify Node.js >=20 as minimum version to align

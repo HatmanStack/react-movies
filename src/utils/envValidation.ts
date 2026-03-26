@@ -1,6 +1,6 @@
 import { logError, logWarn } from "./errorHandler";
 
-interface EnvConfig {
+export interface EnvConfig {
   TMDB_API_KEY: string;
   YOUTUBE_API_KEY?: string;
 }

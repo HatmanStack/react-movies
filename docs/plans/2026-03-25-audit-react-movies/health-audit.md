@@ -7,6 +7,7 @@ goal: general-health-check
 # Codebase Health Audit: react-movies
 
 ## Configuration
+
 - **Goal:** General health check, scan all 4 vectors equally
 - **Deployment Target:** Serverless (Lambda, Cloud Functions)
 - **Scope:** Full repo, no constraints
@@ -14,6 +15,7 @@ goal: general-health-check
 - **Constraints:** None
 
 ## Summary
+
 - Overall health: **FAIR**
 - Biggest structural risk: Entire `app/(tabs)/` directory, `app/modal.tsx`, `app/+not-found.tsx`, and `components/` directory are dead scaffold code with broken imports, creating confusion about the app's actual routing structure
 - Biggest operational risk: The `sleep` function in `src/utils/retry.ts:85-98` leaks an event listener on every abort, and the retry mechanism uses real `setTimeout` delays (up to 10s) that could exhaust serverless execution budgets
@@ -27,9 +29,9 @@ goal: general-health-check
    - **The Debt:** Entire `app/(tabs)/` directory and `components/` directory are leftover Expo template scaffold code. These files import non-existent modules (`@/components/Themed`, `@/components/EditScreenInfo`, `@/constants/Colors`) via 12 unresolved imports (confirmed by knip). The actual app routes are `app/index.tsx` and `app/details/[id].tsx`. The `app/_layout.tsx` root layout registers `(tabs)` routes that collide with the actual app structure.
    - **The Risk:** The `app/(tabs)/` routes are resolvable by expo-router, meaning users could navigate to broken tab screens. Any expo-router upgrade or build analysis will flag unresolved imports. New contributors will be confused about which routing structure is canonical.
 
-2. **[Operational Debt]** `src/utils/retry.ts:85-98` (sleep function)
-   - **The Debt:** The `sleep` function adds an `abort` event listener on line 94 but never removes it. Each retry cycle leaks one listener on the AbortSignal. In a serverless context, retry delays of up to 10 seconds (`RETRY.MAX_DELAY_MS`) with 3 attempts could consume 20+ seconds of wall time per failed API call.
-   - **The Risk:** In a serverless deployment, a single failing API call with retries could exceed function timeout limits. The leaked event listeners accumulate if many concurrent requests share an AbortController. Under high concurrency, this becomes a memory leak.
+2. **[Operational Debt]** `src/utils/retry.ts:85-98` (sleep function) -- **RESOLVED in Phase 2**
+   - **The Debt:** The `sleep` function added an `abort` event listener but never removed it on normal resolution. Fixed: the listener is now cleaned up in the resolve path.
+   - **The Risk:** (Mitigated) Listener leak no longer occurs.
 
 ### HIGH
 
@@ -129,6 +131,7 @@ goal: general-health-check
 ## Automated Scan Results
 
 **Dead code (knip):**
+
 - 8 unused files (scaffold code + `ErrorBoundary.tsx` + `metro.config.js`)
 - 9 unused production dependencies, 9 unused dev dependencies
 - 12 unresolved imports (all in dead scaffold files)
@@ -137,11 +140,13 @@ goal: general-health-check
 - 5 unlisted binaries
 
 **Vulnerability scan (npm audit):**
+
 - 10 vulnerabilities (5 low, 3 moderate, 2 high)
 - All in transitive dev/tooling dependencies (picomatch, yaml, glob)
 - No runtime production vulnerabilities detected
 
 **Secrets scan:**
+
 - `.env` file exists and is gitignored (correct)
 - API keys read via `process.env.EXPO_PUBLIC_*` pattern (Expo convention, exposed client-side by design)
 - No hardcoded secrets found in source

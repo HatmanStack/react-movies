@@ -3,9 +3,9 @@
  * Shared mappers for converting between API responses and domain models
  */
 
-import { MovieDetails, VideoDetails, ReviewDetails } from '../models/types';
-import { TMDbMovie, TMDbVideo, TMDbReview } from '../api/types';
-import { YouTubeService } from '../api/youtube';
+import { MovieDetails, VideoDetails, ReviewDetails } from "../models/types";
+import { TMDbMovie, TMDbVideo, TMDbReview } from "../api/types";
+import { YouTubeService } from "../api/youtube";
 
 /**
  * Flags for categorizing movies
@@ -25,14 +25,14 @@ interface MovieFlags {
  */
 export function mapTMDbToMovieDetails(
   movie: TMDbMovie,
-  flags: MovieFlags
+  flags: MovieFlags,
 ): MovieDetails {
   return {
     id: movie.id,
-    title: movie.title || movie.name || '',
+    title: movie.title || movie.name || "",
     overview: movie.overview,
-    poster_path: movie.poster_path || '',
-    release_date: movie.release_date || movie.first_air_date || '',
+    poster_path: movie.poster_path || "",
+    release_date: movie.release_date || movie.first_air_date || "",
     vote_average: movie.vote_average,
     vote_count: movie.vote_count,
     popularity: movie.popularity,
@@ -54,8 +54,8 @@ export function mapTMDbToMovieDetails(
 function mapTMDbToVideoDetails(
   video: TMDbVideo,
   movieId: number,
-  thumbnailUrl: string
-): Omit<VideoDetails, 'identity'> {
+  thumbnailUrl: string,
+): Omit<VideoDetails, "identity"> {
   return {
     id: movieId,
     image_url: thumbnailUrl,
@@ -77,8 +77,8 @@ function mapTMDbToVideoDetails(
  */
 function mapTMDbToReviewDetails(
   review: TMDbReview,
-  movieId: number
-): Omit<ReviewDetails, 'identity'> {
+  movieId: number,
+): Omit<ReviewDetails, "identity"> {
   return {
     id: movieId,
     author: review.author,
@@ -95,9 +95,9 @@ function mapTMDbToReviewDetails(
  */
 export function mapTMDbMoviesToMovieDetails(
   movies: TMDbMovie[],
-  flags: MovieFlags
+  flags: MovieFlags,
 ): MovieDetails[] {
-  return movies.map(movie => mapTMDbToMovieDetails(movie, flags));
+  return movies.map((movie) => mapTMDbToMovieDetails(movie, flags));
 }
 
 /**
@@ -109,18 +109,19 @@ export function mapTMDbMoviesToMovieDetails(
  */
 export async function mapTMDbVideosToVideoDetails(
   videos: TMDbVideo[],
-  movieId: number
-): Promise<Omit<VideoDetails, 'identity'>[]> {
+  movieId: number,
+  concurrencyLimit: number = 5,
+): Promise<Omit<VideoDetails, "identity">[]> {
   // Fetch thumbnails with concurrency limit to avoid overwhelming the API
   const thumbnails = await mapWithConcurrency(
     videos,
     (video) => YouTubeService.getVideoThumbnail(video.key),
-    5
+    concurrencyLimit,
   );
 
   // Map with fetched thumbnails
   return videos.map((video, index) =>
-    mapTMDbToVideoDetails(video, movieId, thumbnails[index])
+    mapTMDbToVideoDetails(video, movieId, thumbnails[index]),
   );
 }
 
@@ -131,7 +132,7 @@ export async function mapTMDbVideosToVideoDetails(
 async function mapWithConcurrency<T, R>(
   items: T[],
   fn: (item: T) => Promise<R>,
-  concurrency: number
+  concurrency: number,
 ): Promise<R[]> {
   const results: R[] = [];
   let index = 0;
@@ -142,7 +143,7 @@ async function mapWithConcurrency<T, R>(
         const i = index++;
         results[i] = await fn(items[i]);
       }
-    }
+    },
   );
   await Promise.all(workers);
   return results;
@@ -157,8 +158,7 @@ async function mapWithConcurrency<T, R>(
  */
 export function mapTMDbReviewsToReviewDetails(
   reviews: TMDbReview[],
-  movieId: number
-): Omit<ReviewDetails, 'identity'>[] {
-  return reviews.map(review => mapTMDbToReviewDetails(review, movieId));
+  movieId: number,
+): Omit<ReviewDetails, "identity">[] {
+  return reviews.map((review) => mapTMDbToReviewDetails(review, movieId));
 }
-
