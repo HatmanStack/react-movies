@@ -6,7 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 /**
  * ErrorMessage Props
  */
-export interface ErrorMessageProps {
+interface ErrorMessageProps {
   /** Error message to display */
   message: string;
   /** Optional retry callback */

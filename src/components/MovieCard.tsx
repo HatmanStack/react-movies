@@ -1,22 +1,23 @@
-import React from 'react';
-import { StyleSheet, Pressable, View } from 'react-native';
-import { Card, Text } from 'react-native-paper';
-import { Image } from 'expo-image';
-import { MaterialIcons } from '@expo/vector-icons';
+import React from "react";
+import { StyleSheet, Pressable, View } from "react-native";
+import { Card, Text } from "react-native-paper";
+import { Image } from "expo-image";
+import { MaterialIcons } from "@expo/vector-icons";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-} from 'react-native-reanimated';
-import { MovieDetails } from '../models/types';
-import { ANIMATION, COLORS } from '../constants';
+} from "react-native-reanimated";
+import { MovieDetails } from "../models/types";
+import { ANIMATION, COLORS } from "../constants";
+import { TMDbService } from "../api/tmdb";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 /**
  * MovieCard Props
  */
-export interface MovieCardProps {
+interface MovieCardProps {
   movie: MovieDetails;
   onPress: (id: number) => void;
 }
@@ -38,8 +39,8 @@ const MovieCard: React.FC<MovieCardProps> = React.memo(({ movie, onPress }) => {
     transform: [{ scale: scale.value }],
   }));
 
-  // TMDb image base URL (w342 for optimal card size)
-  const posterUrl = `https://image.tmdb.org/t/p/w342${poster_path}`;
+  // Poster URL via centralized TMDbService helper
+  const posterUrl = TMDbService.getPosterUrl(poster_path);
 
   return (
     <AnimatedPressable
@@ -67,12 +68,13 @@ const MovieCard: React.FC<MovieCardProps> = React.memo(({ movie, onPress }) => {
           style={styles.posterContainer}
         >
           <Image
+            testID="movie-poster"
             source={{ uri: posterUrl }}
             style={styles.poster}
             contentFit="cover"
             transition={200}
             cachePolicy="memory-disk"
-            placeholder={{ blurhash: 'L6PZfSi_.AyE_3t7t7R**0o#DgR4' }}
+            placeholder={{ blurhash: "L6PZfSi_.AyE_3t7t7R**0o#DgR4" }}
             priority="high"
           />
         </Animated.View>
@@ -103,7 +105,7 @@ const MovieCard: React.FC<MovieCardProps> = React.memo(({ movie, onPress }) => {
   );
 });
 
-MovieCard.displayName = 'MovieCard';
+MovieCard.displayName = "MovieCard";
 
 const styles = StyleSheet.create({
   pressable: {
@@ -112,23 +114,23 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   posterContainer: {
-    width: '100%',
+    width: "100%",
     height: 240,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   poster: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#e0e0e0',
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#e0e0e0",
   },
   favoriteIndicator: {
-    position: 'absolute',
+    position: "absolute",
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     borderRadius: 16,
     padding: 4,
   },
@@ -137,16 +139,16 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   title: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
   },
   ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   rating: {
-    color: '#666',
+    color: "#666",
   },
 });
 

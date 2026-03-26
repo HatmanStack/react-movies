@@ -13,7 +13,7 @@ export const FILTERS = {
   ALL: 'all',
 } as const;
 
-export type FilterType = (typeof FILTERS)[keyof typeof FILTERS];
+type FilterType = (typeof FILTERS)[keyof typeof FILTERS];
 
 /**
  * Default filter configuration
@@ -73,14 +73,6 @@ export const GRID_COLUMNS = {
 } as const;
 
 /**
- * Database configuration
- */
-export const DB = {
-  NAME: 'movies.db',
-  VERSION: 1,
-} as const;
-
-/**
  * Video types
  */
 export const VIDEO_TYPES = {
@@ -134,6 +126,7 @@ export const PLACEHOLDERS = {
 export const COLORS = {
   PRIMARY: '#1976D2',
   SECONDARY: '#FFC107',
+  ACCENT: '#FF5722',
   FAVORITE: '#E91E63',
   RATING: '#FFC107',
   ERROR: '#f44336',

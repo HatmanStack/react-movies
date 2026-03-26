@@ -12,16 +12,16 @@ export interface TMDbMovie {
   name?: string; // For TV shows
   overview: string;
   poster_path: string | null;
-  backdrop_path: string | null;
+  backdrop_path?: string | null;
   release_date?: string; // For movies
   first_air_date?: string; // For TV shows
   vote_average: number;
   vote_count: number;
   popularity: number;
   original_language: string;
-  genre_ids: number[];
-  adult: boolean;
-  video: boolean;
+  genre_ids?: number[];
+  adult?: boolean;
+  video?: boolean;
 }
 
 /**
@@ -42,12 +42,12 @@ export interface TMDbVideo {
   iso_639_1: string;
   iso_3166_1: string;
   key: string;
-  name: string;
+  name?: string;
   site: string;
   size: number;
   type: string;
-  official: boolean;
-  published_at: string;
+  official?: boolean;
+  published_at?: string;
 }
 
 /**
@@ -64,16 +64,16 @@ export interface TMDbVideosResponse {
 export interface TMDbReview {
   id: string;
   author: string;
-  author_details: {
-    name: string;
-    username: string;
-    avatar_path: string | null;
-    rating: number | null;
+  author_details?: {
+    name?: string;
+    username?: string;
+    avatar_path?: string | null;
+    rating?: number | null;
   };
   content: string;
-  created_at: string;
-  updated_at: string;
-  url: string;
+  created_at?: string;
+  updated_at?: string;
+  url?: string;
 }
 
 /**

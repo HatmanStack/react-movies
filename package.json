@@ -1,5 +1,5 @@
 {
-  "name": "expo-project",
+  "name": "react-movies",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
@@ -11,7 +11,8 @@
     "test:coverage": "jest --coverage",
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "prepare": "command -v husky >/dev/null 2>&1 && husky || true"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -27,7 +28,6 @@
     "expo-splash-screen": "~55.0.12",
     "expo-sqlite": "^55.0.11",
     "expo-status-bar": "~55.0.4",
-    "expo-web-browser": "~55.0.10",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.84.1",
@@ -43,6 +43,8 @@
   "devDependencies": {
     "@babel/preset-env": "^7.29.2",
     "@babel/preset-typescript": "^7.28.5",
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^30.0.0",
@@ -53,8 +55,10 @@
     "eslint-config-expo": "^55.0.0",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-react-hooks": "^7.0.1",
+    "husky": "^9.1.7",
     "jest": "^30.3.0",
     "jest-expo": "^55.0.10",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.8.1",
     "react-test-renderer": "19.2.3",
     "typescript": "~5.9.2"
@@ -64,5 +68,17 @@
       "react": "$react"
     }
   },
-  "private": true
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true,
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
 }

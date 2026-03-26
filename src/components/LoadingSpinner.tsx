@@ -5,7 +5,7 @@ import { ActivityIndicator, Text } from 'react-native-paper';
 /**
  * LoadingSpinner Props
  */
-export interface LoadingSpinnerProps {
+interface LoadingSpinnerProps {
   /** Optional loading message */
   message?: string;
   /** Whether to show as overlay (default: false) */

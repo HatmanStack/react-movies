@@ -2,7 +2,6 @@
   "expo": {
     "name": "Movies",
     "slug": "movies-app",
-    "owner": "your-expo-username",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "description": "Discover popular movies and TV shows from TMDb",
-    "githubUrl": "https://github.com/HatmanStack/android-movies",
+    "githubUrl": "https://github.com/HatmanStack/react-movies",
     "privacy": "public",
     "splash": {
       "image": "./assets/images/splash-icon.png",

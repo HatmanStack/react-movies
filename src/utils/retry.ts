@@ -9,7 +9,7 @@ import { APIError, NetworkError } from '../api/errors';
 /**
  * Retry configuration options
  */
-export interface RetryOptions {
+interface RetryOptions {
   /** Maximum number of retry attempts (default: 3) */
   maxAttempts?: number;
   /** Base delay in milliseconds (default: 1000) */
@@ -89,12 +89,17 @@ async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
       return;
     }
 
-    const timeoutId = setTimeout(resolve, ms);
-
-    signal?.addEventListener('abort', () => {
+    const onAbort = () => {
       clearTimeout(timeoutId);
       reject(new DOMException('Aborted', 'AbortError'));
-    });
+    };
+
+    const timeoutId = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+
+    signal?.addEventListener('abort', onAbort, { once: true });
   });
 }
 
@@ -165,51 +170,3 @@ export async function withRetry<T>(
   throw lastError;
 }
 
-/**
- * Create a retryable version of a function
- *
- * @param fn - Function to make retryable
- * @param options - Default retry options
- * @returns Wrapped function with retry logic
- *
- * @example
- * ```typescript
- * const fetchWithRetry = createRetryable(
- *   (url: string) => fetch(url),
- *   { maxAttempts: 3 }
- * );
- * const result = await fetchWithRetry('https://api.example.com/data');
- * ```
- */
-export function createRetryable<TArgs extends unknown[], TResult>(
-  fn: (...args: TArgs) => Promise<TResult>,
-  options: RetryOptions = {}
-): (...args: TArgs) => Promise<TResult> {
-  return (...args: TArgs) => withRetry(() => fn(...args), options);
-}
-
-/**
- * Check if an error indicates rate limiting
- */
-export function isRateLimitError(error: unknown): boolean {
-  if (error instanceof APIError) {
-    return error.statusCode === 429;
-  }
-  return false;
-}
-
-/**
- * Extract retry-after header value from API error
- *
- * @param error - API error that may contain retry-after info
- * @returns Delay in milliseconds, or undefined if not available
- */
-export function getRetryAfterDelay(error: unknown): number | undefined {
-  // Note: This would need to be implemented based on your API response structure
-  // TMDb API returns rate limit info in headers
-  if (error instanceof APIError && error.statusCode === 429) {
-    // Default to 10 seconds for rate limiting
-    return 10000;
-  }
-  return undefined;
-}

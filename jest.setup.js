@@ -190,6 +190,19 @@ jest.mock('@react-native-async-storage/async-storage', () => {
         });
         return Promise.resolve();
       }),
+      setMany: jest.fn((entries) => {
+        Object.entries(entries).forEach(([key, value]) => {
+          storage[key] = value;
+        });
+        return Promise.resolve();
+      }),
+      getMany: jest.fn((keys) => {
+        const result = {};
+        keys.forEach((key) => {
+          result[key] = storage[key] || null;
+        });
+        return Promise.resolve(result);
+      }),
       multiRemove: jest.fn((keys) => {
         keys.forEach((key) => delete storage[key]);
         return Promise.resolve();

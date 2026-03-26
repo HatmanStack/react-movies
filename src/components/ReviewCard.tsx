@@ -6,7 +6,7 @@ import { ReviewDetails } from '../models/types';
 /**
  * ReviewCard Props
  */
-export interface ReviewCardProps {
+interface ReviewCardProps {
   review: ReviewDetails;
 }
 

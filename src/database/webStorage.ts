@@ -12,15 +12,16 @@
  * - reviews_{movieId}: Array of reviews for a movie
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MovieDetails, VideoDetails, ReviewDetails } from '../models/types';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MovieDetails, VideoDetails, ReviewDetails } from "../models/types";
+import { logWarn } from "../utils/errorHandler";
 
 // Storage keys
 const KEYS = {
-  MOVIES_INDEX: 'movies_index',
-  FAVORITES_INDEX: 'favorites_index',
-  POPULAR_INDEX: 'popular_index',
-  TOPRATED_INDEX: 'toprated_index',
+  MOVIES_INDEX: "movies_index",
+  FAVORITES_INDEX: "favorites_index",
+  POPULAR_INDEX: "popular_index",
+  TOPRATED_INDEX: "toprated_index",
   movieKey: (id: number) => `movie_${id}`,
   videosKey: (movieId: number) => `videos_${movieId}`,
   reviewsKey: (movieId: number) => `reviews_${movieId}`,
@@ -29,11 +30,15 @@ const KEYS = {
 /**
  * Safe JSON parse with fallback
  */
-function safeJsonParse<T>(json: string | null, fallback: T): T {
+function safeJsonParse<T>(json: string | null, fallback: T, key?: string): T {
   if (!json) return fallback;
   try {
     return JSON.parse(json) as T;
   } catch {
+    logWarn(
+      `Failed to parse JSON${key ? ` for key "${key}"` : ""}`,
+      "webStorage",
+    );
     return fallback;
   }
 }
@@ -66,10 +71,9 @@ export async function webInsertMovie(movie: MovieDetails): Promise<void> {
 
   // Get current movie to check if updating categories
   const existingJson = await AsyncStorage.getItem(movieKey);
-  const existing = existingJson ? safeJsonParse<MovieDetails | null>(existingJson, null) : null;
-
-  // Store the movie
-  await AsyncStorage.setItem(movieKey, JSON.stringify(movie));
+  const existing = existingJson
+    ? safeJsonParse<MovieDetails | null>(existingJson, null, movieKey)
+    : null;
 
   // Update all indexes atomically
   const [allIds, favoriteIds, popularIds, topratedIds] = await Promise.all([
@@ -103,13 +107,14 @@ export async function webInsertMovie(movie: MovieDetails): Promise<void> {
     topratedIds.delete(movie.id);
   }
 
-  // Save all indexes in parallel
-  await Promise.all([
-    saveIndexSet(KEYS.MOVIES_INDEX, allIds),
-    saveIndexSet(KEYS.FAVORITES_INDEX, favoriteIds),
-    saveIndexSet(KEYS.POPULAR_INDEX, popularIds),
-    saveIndexSet(KEYS.TOPRATED_INDEX, topratedIds),
-  ]);
+  // Batch write movie + all indexes in a single setMany call
+  await AsyncStorage.setMany({
+    [movieKey]: JSON.stringify(movie),
+    [KEYS.MOVIES_INDEX]: JSON.stringify([...allIds]),
+    [KEYS.FAVORITES_INDEX]: JSON.stringify([...favoriteIds]),
+    [KEYS.POPULAR_INDEX]: JSON.stringify([...popularIds]),
+    [KEYS.TOPRATED_INDEX]: JSON.stringify([...topratedIds]),
+  });
 }
 
 /**
@@ -145,21 +150,24 @@ export async function webInsertMovies(movies: MovieDetails[]): Promise<void> {
     }
   }
 
-  // Batch write all movies + indexes
-  const allEntries: [string, string][] = [
-    ...writes,
-    [KEYS.MOVIES_INDEX, JSON.stringify([...allIds])],
-    [KEYS.FAVORITES_INDEX, JSON.stringify([...favoriteIds])],
-    [KEYS.POPULAR_INDEX, JSON.stringify([...popularIds])],
-    [KEYS.TOPRATED_INDEX, JSON.stringify([...topratedIds])],
-  ];
-  await Promise.all(allEntries.map(([key, value]) => AsyncStorage.setItem(key, value)));
+  // Batch write all movies + indexes in a single setMany call
+  const allEntries: Record<string, string> = {};
+  for (const [key, value] of writes) {
+    allEntries[key] = value;
+  }
+  allEntries[KEYS.MOVIES_INDEX] = JSON.stringify([...allIds]);
+  allEntries[KEYS.FAVORITES_INDEX] = JSON.stringify([...favoriteIds]);
+  allEntries[KEYS.POPULAR_INDEX] = JSON.stringify([...popularIds]);
+  allEntries[KEYS.TOPRATED_INDEX] = JSON.stringify([...topratedIds]);
+  await AsyncStorage.setMany(allEntries);
 }
 
 /**
  * Get movie by ID - O(1)
  */
-export async function webGetMovieById(movieId: number): Promise<MovieDetails | null> {
+export async function webGetMovieById(
+  movieId: number,
+): Promise<MovieDetails | null> {
   const json = await AsyncStorage.getItem(KEYS.movieKey(movieId));
   return safeJsonParse<MovieDetails | null>(json, null);
 }
@@ -170,13 +178,17 @@ export async function webGetMovieById(movieId: number): Promise<MovieDetails | n
 async function getMoviesByIds(ids: number[]): Promise<MovieDetails[]> {
   if (ids.length === 0) return [];
 
-  const keys = ids.map(id => KEYS.movieKey(id));
-  const results = await Promise.all(keys.map(async (key) => {
-    const json = await AsyncStorage.getItem(key);
-    return safeJsonParse<MovieDetails | null>(json, null);
-  }));
+  const keys = ids.map((id) => KEYS.movieKey(id));
+  const results = await Promise.all(
+    keys.map(async (key) => {
+      const json = await AsyncStorage.getItem(key);
+      return safeJsonParse<MovieDetails | null>(json, null);
+    }),
+  );
 
-  return results.filter((movie: MovieDetails | null): movie is MovieDetails => movie !== null);
+  return results.filter(
+    (movie: MovieDetails | null): movie is MovieDetails => movie !== null,
+  );
 }
 
 /**
@@ -246,17 +258,21 @@ export async function webDeleteMovie(movieId: number): Promise<void> {
  * Insert video for a movie
  */
 export async function webInsertVideo(
-  video: Omit<VideoDetails, 'identity'> | VideoDetails
+  video: Omit<VideoDetails, "identity"> | VideoDetails,
 ): Promise<void> {
   const key = KEYS.videosKey(video.id);
   const json = await AsyncStorage.getItem(key);
   const videos = safeJsonParse<VideoDetails[]>(json, []);
 
   const videoWithIdentity: VideoDetails =
-    'identity' in video ? video : { ...video, identity: Date.now() + Math.random() };
+    "identity" in video
+      ? video
+      : { ...video, identity: Date.now() + Math.random() };
 
   // Check for existing by key (YouTube video ID)
-  const existingIndex = videos.findIndex(v => v.key === videoWithIdentity.key);
+  const existingIndex = videos.findIndex(
+    (v) => v.key === videoWithIdentity.key,
+  );
 
   if (existingIndex >= 0) {
     videos[existingIndex] = videoWithIdentity;
@@ -272,21 +288,23 @@ export async function webInsertVideo(
  */
 export async function webInsertVideos(
   movieId: number,
-  newVideos: (Omit<VideoDetails, 'identity'> | VideoDetails)[]
+  newVideos: (Omit<VideoDetails, "identity"> | VideoDetails)[],
 ): Promise<void> {
   if (newVideos.length === 0) return;
 
   const key = KEYS.videosKey(movieId);
   const json = await AsyncStorage.getItem(key);
   const videos = safeJsonParse<VideoDetails[]>(json, []);
-  const existingKeys = new Set(videos.map(v => v.key));
+  const existingKeys = new Set(videos.map((v) => v.key));
 
   for (const video of newVideos) {
     const videoWithIdentity: VideoDetails =
-      'identity' in video ? video : { ...video, identity: Date.now() + Math.random() };
+      "identity" in video
+        ? video
+        : { ...video, identity: Date.now() + Math.random() };
 
     if (existingKeys.has(videoWithIdentity.key)) {
-      const idx = videos.findIndex(v => v.key === videoWithIdentity.key);
+      const idx = videos.findIndex((v) => v.key === videoWithIdentity.key);
       videos[idx] = videoWithIdentity;
     } else {
       videos.push(videoWithIdentity);
@@ -300,7 +318,9 @@ export async function webInsertVideos(
 /**
  * Get all videos for a movie
  */
-export async function webGetVideosForMovie(movieId: number): Promise<VideoDetails[]> {
+export async function webGetVideosForMovie(
+  movieId: number,
+): Promise<VideoDetails[]> {
   const json = await AsyncStorage.getItem(KEYS.videosKey(movieId));
   return safeJsonParse<VideoDetails[]>(json, []);
 }
@@ -308,9 +328,11 @@ export async function webGetVideosForMovie(movieId: number): Promise<VideoDetail
 /**
  * Get trailers for a movie
  */
-export async function webGetTrailersForMovie(movieId: number): Promise<VideoDetails[]> {
+export async function webGetTrailersForMovie(
+  movieId: number,
+): Promise<VideoDetails[]> {
   const videos = await webGetVideosForMovie(movieId);
-  return videos.filter(v => v.type === 'Trailer');
+  return videos.filter((v) => v.type === "Trailer");
 }
 
 // ============================================================================
@@ -321,17 +343,21 @@ export async function webGetTrailersForMovie(movieId: number): Promise<VideoDeta
  * Insert review for a movie
  */
 export async function webInsertReview(
-  review: Omit<ReviewDetails, 'identity'> | ReviewDetails
+  review: Omit<ReviewDetails, "identity"> | ReviewDetails,
 ): Promise<void> {
   const key = KEYS.reviewsKey(review.id);
   const json = await AsyncStorage.getItem(key);
   const reviews = safeJsonParse<ReviewDetails[]>(json, []);
 
   const reviewWithIdentity: ReviewDetails =
-    'identity' in review ? review : { ...review, identity: Date.now() + Math.random() };
+    "identity" in review
+      ? review
+      : { ...review, identity: Date.now() + Math.random() };
 
   // Check for existing by author
-  const existingIndex = reviews.findIndex(r => r.author === reviewWithIdentity.author);
+  const existingIndex = reviews.findIndex(
+    (r) => r.author === reviewWithIdentity.author,
+  );
 
   if (existingIndex >= 0) {
     reviews[existingIndex] = reviewWithIdentity;
@@ -347,21 +373,25 @@ export async function webInsertReview(
  */
 export async function webInsertReviews(
   movieId: number,
-  newReviews: (Omit<ReviewDetails, 'identity'> | ReviewDetails)[]
+  newReviews: (Omit<ReviewDetails, "identity"> | ReviewDetails)[],
 ): Promise<void> {
   if (newReviews.length === 0) return;
 
   const key = KEYS.reviewsKey(movieId);
   const json = await AsyncStorage.getItem(key);
   const reviews = safeJsonParse<ReviewDetails[]>(json, []);
-  const existingAuthors = new Set(reviews.map(r => r.author));
+  const existingAuthors = new Set(reviews.map((r) => r.author));
 
   for (const review of newReviews) {
     const reviewWithIdentity: ReviewDetails =
-      'identity' in review ? review : { ...review, identity: Date.now() + Math.random() };
+      "identity" in review
+        ? review
+        : { ...review, identity: Date.now() + Math.random() };
 
     if (existingAuthors.has(reviewWithIdentity.author)) {
-      const idx = reviews.findIndex(r => r.author === reviewWithIdentity.author);
+      const idx = reviews.findIndex(
+        (r) => r.author === reviewWithIdentity.author,
+      );
       reviews[idx] = reviewWithIdentity;
     } else {
       reviews.push(reviewWithIdentity);
@@ -375,7 +405,9 @@ export async function webInsertReviews(
 /**
  * Get all reviews for a movie
  */
-export async function webGetReviewsForMovie(movieId: number): Promise<ReviewDetails[]> {
+export async function webGetReviewsForMovie(
+  movieId: number,
+): Promise<ReviewDetails[]> {
   const json = await AsyncStorage.getItem(KEYS.reviewsKey(movieId));
   return safeJsonParse<ReviewDetails[]>(json, []);
 }
@@ -389,37 +421,19 @@ export async function webGetReviewsForMovie(movieId: number): Promise<ReviewDeta
  */
 export async function migrateToIndexedStorage(): Promise<void> {
   // Check if already migrated
-  const migrated = await AsyncStorage.getItem('storage_migrated_v2');
-  if (migrated === 'true') return;
+  const migrated = await AsyncStorage.getItem("storage_migrated_v2");
+  if (migrated === "true") return;
 
   // Get old data
-  const oldMoviesJson = await AsyncStorage.getItem('movies_all');
+  const oldMoviesJson = await AsyncStorage.getItem("movies_all");
   if (oldMoviesJson) {
     const movies = safeJsonParse<MovieDetails[]>(oldMoviesJson, []);
     if (movies.length > 0) {
       await webInsertMovies(movies);
       // Remove old storage key
-      await AsyncStorage.removeItem('movies_all');
+      await AsyncStorage.removeItem("movies_all");
     }
   }
 
-  await AsyncStorage.setItem('storage_migrated_v2', 'true');
-}
-
-/**
- * Clear all indexed storage (for testing)
- */
-export async function clearIndexedStorage(): Promise<void> {
-  const allIds = await getIndexSet(KEYS.MOVIES_INDEX);
-
-  const keysToRemove = [
-    KEYS.MOVIES_INDEX,
-    KEYS.FAVORITES_INDEX,
-    KEYS.POPULAR_INDEX,
-    KEYS.TOPRATED_INDEX,
-    ...[...allIds].map(id => KEYS.movieKey(id)),
-    'storage_migrated_v2',
-  ];
-
-  await Promise.all(keysToRemove.map(key => AsyncStorage.removeItem(key)));
+  await AsyncStorage.setItem("storage_migrated_v2", "true");
 }
