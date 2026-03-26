@@ -6,12 +6,12 @@
  * All operations are O(1) or O(k) where k is the result set size
  */
 
-import { Platform } from 'react-native';
-import { getDatabase } from './init';
-import { MovieDetails, VideoDetails, ReviewDetails } from '../models/types';
-import { DatabaseError } from '../api/errors';
-import { logError } from '../utils/errorHandler';
-import { VIDEO_TYPES } from '../constants';
+import { Platform } from "react-native";
+import { getDatabase } from "./init";
+import { MovieDetails, VideoDetails, ReviewDetails } from "../models/types";
+import { DatabaseError } from "../api/errors";
+import { logError } from "../utils/errorHandler";
+import { VIDEO_TYPES } from "../constants";
 import {
   webInsertMovie,
   webInsertMovies,
@@ -29,12 +29,12 @@ import {
   webInsertReviews,
   webGetReviewsForMovie,
   migrateToIndexedStorage,
-} from './webStorage';
+} from "./webStorage";
 
 /**
  * Check if we're running on web
  */
-const isWeb = Platform.OS === 'web';
+const isWeb = Platform.OS === "web";
 
 // ============================================================================
 // TYPED DATABASE ROW INTERFACES
@@ -93,15 +93,15 @@ interface ReviewRow {
  */
 async function withDbError<T>(
   operation: () => Promise<T>,
-  context: string
+  context: string,
 ): Promise<T> {
   try {
     return await operation();
   } catch (error) {
     logError(error, context);
     throw new DatabaseError(
-      `${context}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      context
+      `${context}: ${error instanceof Error ? error.message : "Unknown error"}`,
+      context,
     );
   }
 }
@@ -206,9 +206,9 @@ export async function insertMovie(movie: MovieDetails): Promise<void> {
         movie.favorite ? 1 : 0,
         movie.toprated ? 1 : 0,
         movie.popular ? 1 : 0,
-      ]
+      ],
     );
-  }, 'insertMovie');
+  }, "insertMovie");
 }
 
 /**
@@ -244,18 +244,20 @@ export async function insertMovies(movies: MovieDetails[]): Promise<void> {
             movie.favorite ? 1 : 0,
             movie.toprated ? 1 : 0,
             movie.popular ? 1 : 0,
-          ]
+          ],
         );
       }
     });
-  }, 'insertMovies');
+  }, "insertMovies");
 }
 
 /**
  * Get movie by ID
  * O(1) lookup
  */
-export async function getMovieById(movieId: number): Promise<MovieDetails | null> {
+export async function getMovieById(
+  movieId: number,
+): Promise<MovieDetails | null> {
   return withDbError(async () => {
     if (isWeb) {
       return webGetMovieById(movieId);
@@ -263,12 +265,12 @@ export async function getMovieById(movieId: number): Promise<MovieDetails | null
 
     const db = getDatabase();
     const row = await db.getFirstAsync<MovieRow>(
-      'SELECT * FROM movie_details WHERE id = ?',
-      [movieId]
+      "SELECT * FROM movie_details WHERE id = ?",
+      [movieId],
     );
 
     return row ? mapRowToMovie(row) : null;
-  }, 'getMovieById');
+  }, "getMovieById");
 }
 
 /**
@@ -283,10 +285,10 @@ export async function getFavoriteMovies(): Promise<MovieDetails[]> {
 
     const db = getDatabase();
     const rows = await db.getAllAsync<MovieRow>(
-      'SELECT * FROM movie_details WHERE favorite = 1'
+      "SELECT * FROM movie_details WHERE favorite = 1 AND title != ''",
     );
     return rows.map(mapRowToMovie);
-  }, 'getFavoriteMovies');
+  }, "getFavoriteMovies");
 }
 
 /**
@@ -301,10 +303,10 @@ export async function getPopularMovies(): Promise<MovieDetails[]> {
 
     const db = getDatabase();
     const rows = await db.getAllAsync<MovieRow>(
-      'SELECT * FROM movie_details WHERE popular = 1'
+      "SELECT * FROM movie_details WHERE popular = 1",
     );
     return rows.map(mapRowToMovie);
-  }, 'getPopularMovies');
+  }, "getPopularMovies");
 }
 
 /**
@@ -319,10 +321,10 @@ export async function getTopRatedMovies(): Promise<MovieDetails[]> {
 
     const db = getDatabase();
     const rows = await db.getAllAsync<MovieRow>(
-      'SELECT * FROM movie_details WHERE toprated = 1'
+      "SELECT * FROM movie_details WHERE toprated = 1",
     );
     return rows.map(mapRowToMovie);
-  }, 'getTopRatedMovies');
+  }, "getTopRatedMovies");
 }
 
 /**
@@ -336,9 +338,11 @@ export async function getAllMovies(): Promise<MovieDetails[]> {
     }
 
     const db = getDatabase();
-    const rows = await db.getAllAsync<MovieRow>('SELECT * FROM movie_details');
+    const rows = await db.getAllAsync<MovieRow>(
+      "SELECT * FROM movie_details WHERE title != ''",
+    );
     return rows.map(mapRowToMovie);
-  }, 'getAllMovies');
+  }, "getAllMovies");
 }
 
 /**
@@ -352,8 +356,8 @@ export async function deleteMovie(movieId: number): Promise<void> {
     }
 
     const db = getDatabase();
-    await db.runAsync('DELETE FROM movie_details WHERE id = ?', [movieId]);
-  }, 'deleteMovie');
+    await db.runAsync("DELETE FROM movie_details WHERE id = ?", [movieId]);
+  }, "deleteMovie");
 }
 
 // ============================================================================
@@ -364,7 +368,7 @@ export async function deleteMovie(movieId: number): Promise<void> {
  * Insert or update a video
  */
 export async function insertVideo(
-  video: Omit<VideoDetails, 'identity'> | VideoDetails
+  video: Omit<VideoDetails, "identity"> | VideoDetails,
 ): Promise<void> {
   return withDbError(async () => {
     if (isWeb) {
@@ -385,9 +389,9 @@ export async function insertVideo(
         video.site,
         video.size,
         video.type,
-      ]
+      ],
     );
-  }, 'insertVideo');
+  }, "insertVideo");
 }
 
 /**
@@ -395,7 +399,7 @@ export async function insertVideo(
  */
 export async function insertVideos(
   movieId: number,
-  videos: (Omit<VideoDetails, 'identity'> | VideoDetails)[]
+  videos: (Omit<VideoDetails, "identity"> | VideoDetails)[],
 ): Promise<void> {
   return withDbError(async () => {
     if (videos.length === 0) return;
@@ -420,17 +424,19 @@ export async function insertVideos(
             video.site,
             video.size,
             video.type,
-          ]
+          ],
         );
       }
     });
-  }, 'insertVideos');
+  }, "insertVideos");
 }
 
 /**
  * Get all videos for a specific movie
  */
-export async function getVideosForMovie(movieId: number): Promise<VideoDetails[]> {
+export async function getVideosForMovie(
+  movieId: number,
+): Promise<VideoDetails[]> {
   return withDbError(async () => {
     if (isWeb) {
       return webGetVideosForMovie(movieId);
@@ -438,17 +444,19 @@ export async function getVideosForMovie(movieId: number): Promise<VideoDetails[]
 
     const db = getDatabase();
     const rows = await db.getAllAsync<VideoRow>(
-      'SELECT * FROM video_details WHERE id = ?',
-      [movieId]
+      "SELECT * FROM video_details WHERE id = ?",
+      [movieId],
     );
     return rows.map(mapRowToVideo);
-  }, 'getVideosForMovie');
+  }, "getVideosForMovie");
 }
 
 /**
  * Get trailers for a specific movie
  */
-export async function getTrailersForMovie(movieId: number): Promise<VideoDetails[]> {
+export async function getTrailersForMovie(
+  movieId: number,
+): Promise<VideoDetails[]> {
   return withDbError(async () => {
     if (isWeb) {
       return webGetTrailersForMovie(movieId);
@@ -457,10 +465,10 @@ export async function getTrailersForMovie(movieId: number): Promise<VideoDetails
     const db = getDatabase();
     const rows = await db.getAllAsync<VideoRow>(
       `SELECT * FROM video_details WHERE type = ? AND id = ?`,
-      [VIDEO_TYPES.TRAILER, movieId]
+      [VIDEO_TYPES.TRAILER, movieId],
     );
     return rows.map(mapRowToVideo);
-  }, 'getTrailersForMovie');
+  }, "getTrailersForMovie");
 }
 
 // ============================================================================
@@ -471,7 +479,7 @@ export async function getTrailersForMovie(movieId: number): Promise<VideoDetails
  * Insert or update a review
  */
 export async function insertReview(
-  review: Omit<ReviewDetails, 'identity'> | ReviewDetails
+  review: Omit<ReviewDetails, "identity"> | ReviewDetails,
 ): Promise<void> {
   return withDbError(async () => {
     if (isWeb) {
@@ -483,9 +491,9 @@ export async function insertReview(
       `INSERT OR REPLACE INTO review_details
        (id, author, content)
        VALUES (?, ?, ?)`,
-      [review.id, review.author, review.content]
+      [review.id, review.author, review.content],
     );
-  }, 'insertReview');
+  }, "insertReview");
 }
 
 /**
@@ -493,7 +501,7 @@ export async function insertReview(
  */
 export async function insertReviews(
   movieId: number,
-  reviews: (Omit<ReviewDetails, 'identity'> | ReviewDetails)[]
+  reviews: (Omit<ReviewDetails, "identity"> | ReviewDetails)[],
 ): Promise<void> {
   return withDbError(async () => {
     if (reviews.length === 0) return;
@@ -509,17 +517,19 @@ export async function insertReviews(
           `INSERT OR REPLACE INTO review_details
            (id, author, content)
            VALUES (?, ?, ?)`,
-          [review.id, review.author, review.content]
+          [review.id, review.author, review.content],
         );
       }
     });
-  }, 'insertReviews');
+  }, "insertReviews");
 }
 
 /**
  * Get all reviews for a specific movie
  */
-export async function getReviewsForMovie(movieId: number): Promise<ReviewDetails[]> {
+export async function getReviewsForMovie(
+  movieId: number,
+): Promise<ReviewDetails[]> {
   return withDbError(async () => {
     if (isWeb) {
       return webGetReviewsForMovie(movieId);
@@ -527,9 +537,9 @@ export async function getReviewsForMovie(movieId: number): Promise<ReviewDetails
 
     const db = getDatabase();
     const rows = await db.getAllAsync<ReviewRow>(
-      'SELECT * FROM review_details WHERE id = ?',
-      [movieId]
+      "SELECT * FROM review_details WHERE id = ?",
+      [movieId],
     );
     return rows.map(mapRowToReview);
-  }, 'getReviewsForMovie');
+  }, "getReviewsForMovie");
 }

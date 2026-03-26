@@ -1,15 +1,26 @@
-import React, { useEffect, useCallback, useMemo, useRef } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, useWindowDimensions } from 'react-native';
-import { Text, Banner } from 'react-native-paper';
-import { router, useFocusEffect } from 'expo-router';
-import Head from 'expo-router/head';
-import { useMovieStore } from '../src/store/movieStore';
-import { useFilterStore } from '../src/store/filterStore';
-import MovieCard from '../src/components/MovieCard';
-import LoadingSpinner from '../src/components/LoadingSpinner';
-import ErrorMessage from '../src/components/ErrorMessage';
-import { SEO_CONFIG, generateCanonicalUrl } from '../src/utils/seo';
-import { BREAKPOINTS, GRID_COLUMNS, COLORS, PAGINATION } from '../src/constants';
+import React, { useEffect, useCallback, useMemo, useRef } from "react";
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  RefreshControl,
+  useWindowDimensions,
+} from "react-native";
+import { Text, Banner } from "react-native-paper";
+import { router, useFocusEffect } from "expo-router";
+import Head from "expo-router/head";
+import { useMovieStore } from "../src/store/movieStore";
+import { useFilterStore } from "../src/store/filterStore";
+import MovieCard from "../src/components/MovieCard";
+import LoadingSpinner from "../src/components/LoadingSpinner";
+import ErrorMessage from "../src/components/ErrorMessage";
+import { SEO_CONFIG, generateCanonicalUrl } from "../src/utils/seo";
+import {
+  BREAKPOINTS,
+  GRID_COLUMNS,
+  COLORS,
+  PAGINATION,
+} from "../src/constants";
 
 /**
  * Calculate number of columns based on screen width
@@ -40,7 +51,9 @@ export default function HomeScreen(): React.JSX.Element {
   const loadingMore = useMovieStore((state) => state.loadingMore);
   const error = useMovieStore((state) => state.error);
   const isOffline = useMovieStore((state) => state.isOffline);
-  const loadMoviesFromFilters = useMovieStore((state) => state.loadMoviesFromFilters);
+  const loadMoviesFromFilters = useMovieStore(
+    (state) => state.loadMoviesFromFilters,
+  );
   const syncMoviesWithAPI = useMovieStore((state) => state.syncMoviesWithAPI);
   const loadMoreMovies = useMovieStore((state) => state.loadMoreMovies);
   const clearError = useMovieStore((state) => state.clearError);
@@ -90,7 +103,13 @@ export default function HomeScreen(): React.JSX.Element {
     const activeFilters = getActiveFilters();
     loadMoviesFromFilters(activeFilters, controller.signal);
     return () => controller.abort();
-  }, [showPopular, showTopRated, showFavorites, getActiveFilters, loadMoviesFromFilters]);
+  }, [
+    showPopular,
+    showTopRated,
+    showFavorites,
+    getActiveFilters,
+    loadMoviesFromFilters,
+  ]);
 
   // Reload movies when screen comes into focus (skip initial focus)
   useFocusEffect(
@@ -103,11 +122,12 @@ export default function HomeScreen(): React.JSX.Element {
       const activeFilters = getActiveFilters();
       loadMoviesFromFilters(activeFilters, controller.signal);
       return () => controller.abort();
-    }, [getActiveFilters, loadMoviesFromFilters])
+    }, [getActiveFilters, loadMoviesFromFilters]),
   );
 
   // Handle pull-to-refresh with cancellation
   const handleRefresh = useCallback(() => {
+    abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
     syncMoviesWithAPI(controller.signal, { preserveFavorites: true });
@@ -136,14 +156,17 @@ export default function HomeScreen(): React.JSX.Element {
 
   // Render movie card item
   const renderMovieItem = useCallback(
-    ({ item }: { item: typeof movies[0] }) => (
+    ({ item }: { item: (typeof movies)[0] }) => (
       <MovieCard movie={item} onPress={handleMoviePress} />
     ),
-    [handleMoviePress]
+    [handleMoviePress],
   );
 
   // Key extractor for FlatList
-  const keyExtractor = useCallback((item: typeof movies[0]) => item.id.toString(), []);
+  const keyExtractor = useCallback(
+    (item: (typeof movies)[0]) => item.id.toString(),
+    [],
+  );
 
   // Show error state
   if (error && !loading) {
@@ -186,16 +209,22 @@ export default function HomeScreen(): React.JSX.Element {
       <Head>
         <title>{SEO_CONFIG.defaultTitle}</title>
         <meta name="description" content={SEO_CONFIG.defaultDescription} />
-        <link rel="canonical" href={generateCanonicalUrl('/')} />
+        <link rel="canonical" href={generateCanonicalUrl("/")} />
         <meta property="og:title" content={SEO_CONFIG.defaultTitle} />
-        <meta property="og:description" content={SEO_CONFIG.defaultDescription} />
-        <meta property="og:url" content={generateCanonicalUrl('/')} />
+        <meta
+          property="og:description"
+          content={SEO_CONFIG.defaultDescription}
+        />
+        <meta property="og:url" content={generateCanonicalUrl("/")} />
         <meta
           property="og:image"
           content={`${SEO_CONFIG.siteUrl}${SEO_CONFIG.defaultImage}`}
         />
         <meta name="twitter:title" content={SEO_CONFIG.defaultTitle} />
-        <meta name="twitter:description" content={SEO_CONFIG.defaultDescription} />
+        <meta
+          name="twitter:description"
+          content={SEO_CONFIG.defaultDescription}
+        />
         <meta
           name="twitter:image"
           content={`${SEO_CONFIG.siteUrl}${SEO_CONFIG.defaultImage}`}
@@ -245,7 +274,6 @@ export default function HomeScreen(): React.JSX.Element {
         accessible={true}
         accessibilityLabel={`Movie grid with ${numColumns} columns`}
       />
-
     </View>
   );
 }
@@ -261,8 +289,8 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   emptyTitle: {
@@ -271,12 +299,12 @@ const styles = StyleSheet.create({
   },
   emptyMessage: {
     color: COLORS.TEXT_TERTIARY,
-    textAlign: 'center',
+    textAlign: "center",
   },
   loadingMore: {
     padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   loadingMoreText: {
     color: COLORS.PRIMARY,
