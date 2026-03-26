@@ -11,7 +11,8 @@
     "test:coverage": "jest --coverage",
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "prepare": "husky"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -27,7 +28,6 @@
     "expo-splash-screen": "~55.0.12",
     "expo-sqlite": "^55.0.11",
     "expo-status-bar": "~55.0.4",
-
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.84.1",
@@ -53,8 +53,10 @@
     "eslint-config-expo": "^55.0.0",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-react-hooks": "^7.0.1",
+    "husky": "^9.1.7",
     "jest": "^30.3.0",
     "jest-expo": "^55.0.10",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.8.1",
     "react-test-renderer": "19.2.3",
     "typescript": "~5.9.2"
@@ -64,5 +66,14 @@
       "react": "$react"
     }
   },
-  "private": true
+  "private": true,
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
 }
