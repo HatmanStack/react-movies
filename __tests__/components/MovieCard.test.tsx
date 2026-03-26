@@ -125,17 +125,35 @@ describe('MovieCard', () => {
   });
 
   it('memoization prevents unnecessary re-renders', () => {
+    const renderSpy = jest.fn();
+    const WrappedCard = React.memo(({ movie, onPress }: { movie: typeof mockMovie; onPress: (id: number) => void }) => {
+      renderSpy();
+      return <MovieCard movie={movie} onPress={onPress} />;
+    });
+
     const onPressMock = jest.fn();
     const { rerender } = render(
-      <MovieCard movie={mockMovie} onPress={onPressMock} />,
+      <WrappedCard movie={mockMovie} onPress={onPressMock} />,
       { wrapper }
     );
 
-    // Re-render with same props
-    rerender(<MovieCard movie={mockMovie} onPress={onPressMock} />);
+    expect(renderSpy).toHaveBeenCalledTimes(1);
 
-    // Component should be memoized (React.memo)
-    // Verify by checking that it doesn't cause issues
-    expect(true).toBe(true);
+    // Re-render with same props reference - memo should prevent re-render of wrapper
+    rerender(<WrappedCard movie={mockMovie} onPress={onPressMock} />);
+
+    expect(renderSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders correct poster URL via TMDbService', () => {
+    const { UNSAFE_getByType } = render(
+      <MovieCard movie={mockMovie} onPress={jest.fn()} />,
+      { wrapper }
+    );
+
+    // The Image component should receive a URI built by TMDbService.getPosterUrl
+    const images = UNSAFE_getByType(require('expo-image').Image);
+    expect(images.props.source.uri).toContain('/test.jpg');
+    expect(images.props.source.uri).toContain('image.tmdb.org');
   });
 });

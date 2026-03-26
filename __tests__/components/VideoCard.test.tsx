@@ -100,16 +100,23 @@ describe('VideoCard', () => {
   });
 
   it('is memoized for performance', () => {
+    const renderSpy = jest.fn();
+    const WrappedCard = React.memo(({ video, onPress }: { video: typeof mockVideo; onPress: (key: string) => void }) => {
+      renderSpy();
+      return <VideoCard video={video} onPress={onPress} />;
+    });
+
     const onPressMock = jest.fn();
     const { rerender } = render(
-      <VideoCard video={mockVideo} onPress={onPressMock} />,
+      <WrappedCard video={mockVideo} onPress={onPressMock} />,
       { wrapper }
     );
 
-    // Re-render with same props
-    rerender(<VideoCard video={mockVideo} onPress={onPressMock} />);
+    expect(renderSpy).toHaveBeenCalledTimes(1);
 
-    // Component should be memoized (React.memo)
-    expect(true).toBe(true);
+    // Re-render with same props reference - memo should prevent re-render
+    rerender(<WrappedCard video={mockVideo} onPress={onPressMock} />);
+
+    expect(renderSpy).toHaveBeenCalledTimes(1);
   });
 });
