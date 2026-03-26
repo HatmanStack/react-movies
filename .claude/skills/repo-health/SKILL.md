@@ -77,6 +77,7 @@ C) None — no linting, CI, or hooks configured
 ### Step 2: Generate Plan Identifier
 
 Generate the directory name: `YYYY-MM-DD-health-slug`
+
 - Date: today's date
 - Slug: short name (e.g., `health-ragstack`, `health-api`)
 - Location: `docs/plans/YYYY-MM-DD-health-slug/`
@@ -87,7 +88,7 @@ Create the directory.
 
 **You** (the orchestrator) must read the role prompt file and embed its contents in the agent's prompt. Agents cannot access skill directory files.
 
-1. **Read** `.claude/skills/pipeline/health-auditor.md` — store contents as `AUDITOR_PROMPT`
+1. **Read** `skills/pipeline/health-auditor.md` — store contents as `AUDITOR_PROMPT`
 2. Spawn an **Agent** with:
 
 ```xml
@@ -104,9 +105,11 @@ Constraints: [from Step 1]
 </task>
 ```
 
-### Step 4: Write Audit Document
+### Step 4: Validate and Write Audit Document
 
-Read the auditor output. **Write** `docs/plans/YYYY-MM-DD-health-slug/health-audit.md`:
+Verify the auditor's output contains `AUDIT_COMPLETE`. If missing, the agent may have been truncated — report to the user and do NOT write health-audit.md with partial data.
+
+If signal present, **Write** `docs/plans/YYYY-MM-DD-health-slug/health-audit.md`:
 
 ```markdown
 ---
@@ -118,26 +121,46 @@ goal: [from Step 1]
 # Codebase Health Audit: [repo name]
 
 ## Configuration
+
 - **Goal:** [from Step 1]
 - **Scope:** [from Step 1]
 - **Existing Tooling:** [from Step 1]
 - **Constraints:** [from Step 1]
 
 ## Summary
+
 - Overall health: [CRITICAL | POOR | FAIR | GOOD | EXCELLENT]
 - Total findings: X critical, Y high, Z medium, W low
 
 ## Tech Debt Ledger
+
 [Full auditor output — prioritized findings with file:line locations]
 
 ## Quick Wins
+
 [Low effort, high impact items from the auditor]
 
 ## Automated Scan Results
+
 [Tool output summaries from knip/vulture, npm audit/pip-audit, etc.]
 ```
 
-### Step 5: Handoff
+### Step 5: Log to Manifest
+
+Append an entry to `.claude/skill-runs.json` in the repo root. If the file does not exist, create it with an empty array first.
+
+```json
+{
+  "skill": "repo-health",
+  "date": "YYYY-MM-DD",
+  "plan": "YYYY-MM-DD-health-slug"
+}
+```
+
+- Read the existing file, parse the JSON array, append the new entry, and write it back
+- If the file is malformed, overwrite it with a fresh array containing only the new entry
+
+### Step 6: Handoff
 
 ```text
 Audit complete: docs/plans/YYYY-MM-DD-health-slug/health-audit.md

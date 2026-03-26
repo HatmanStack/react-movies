@@ -4,7 +4,7 @@
 
 ```text
 +----------+     +----------+     +--------------+     +------------+     +---------+     +-----------+     +---------+     +----------+
-| Auditor  | --> | Planner  | --> | Plan Reviewer| --> | Hygienist  | --> | Health  | --> | Fortifier | --> | Health  | --> | Re-Audit |
+| Auditor  | --> | Planner  | --> | Plan Reviewer| --> | Hygienist  | --> | Health  | --> | Fortifier | --> | Health  | --> | Verify   |
 |          |     |          |     |              |     | (cleanup)  |     | Review  |     | (harden)  |     | Review  |     |          |
 +----------+     +----------+     +--------------+     +------------+     +---------+     +-----------+     +---------+     +----------+
                         ^                |                    ^                |                ^                |                |
@@ -19,6 +19,7 @@
 ## Intake Document
 
 The intake skill produces `docs/plans/$ARGUMENTS/health-audit.md` with:
+
 - `type: repo-health` in frontmatter
 - Tech debt ledger (prioritized by severity)
 - Quick wins identified
@@ -28,28 +29,31 @@ The intake skill produces `docs/plans/$ARGUMENTS/health-audit.md` with:
 
 Before starting any stage, detect prior progress:
 
-1. **Check for plan files**: Glob for `docs/plans/$ARGUMENTS/Phase-*.md`
-2. **Check feedback.md** (if it exists):
+1. **Check feedback.md** for `VERIFIED` signal → pipeline already complete, report and stop
+2. **Check for plan files**: Glob for `docs/plans/$ARGUMENTS/Phase-*.md`
+3. **Check feedback.md** (if it exists):
+   - `PHASE_APPROVED` for all phases → enter at Stage 4 (Verification)
    - `PLAN_APPROVED` with no phase progress → enter at Stage 3 (Implementation)
-   - `PHASE_APPROVED` for all phases → enter at Stage 4 (Re-Audit)
    - OPEN `CODE_REVIEW` items → enter at Stage 3 at the correct phase with revision instructions
    - OPEN `PLAN_REVIEW` items → enter at Stage 2 with revision instructions
-3. **Check feedback.md** for `VERIFIED` signal → pipeline complete, report and stop
 4. **No plan files, no feedback.md** → enter at Stage 2 (first run)
 
 Apply the same per-phase state recovery logic from the main SKILL.md (check `PHASE_APPROVED`, OPEN/resolved `CODE_REVIEW`, and git commits per phase).
+
+If `docs/plans/$ARGUMENTS/feedback.md` does not exist, create it with the empty template from `pipeline-protocol.md` before proceeding to any stage.
 
 Report detected state to the user before continuing.
 
 ## Pre-Flight: Role File Validation
 
 Before spawning any agents, verify all required role prompt files exist using **Glob**:
-- `.claude/skills/pipeline/planner.md`
-- `.claude/skills/pipeline/plan_reviewer.md`
-- `.claude/skills/pipeline/health-hygienist.md`
-- `.claude/skills/pipeline/health-fortifier.md`
-- `.claude/skills/pipeline/health-reviewer.md`
-- `.claude/skills/pipeline/health-auditor.md`
+
+- `skills/pipeline/planner.md`
+- `skills/pipeline/plan_reviewer.md`
+- `skills/pipeline/health-hygienist.md`
+- `skills/pipeline/health-fortifier.md`
+- `skills/pipeline/health-reviewer.md`
+- `skills/pipeline/health-auditor.md`
 
 If any file is missing, **stop and report** which files are absent.
 
@@ -62,7 +66,7 @@ Skip this stage — the intake skill (`/repo-health`) already ran the auditor an
 Auditor agents are **token-expensive**. They run exactly twice in the full lifecycle:
 
 1. **Once during `/repo-health` intake** — produces health-audit.md
-2. **Never again** — Stage 4 (Verification) uses the existing code reviewer to spot-check findings, NOT the auditor agent
+2. **Never again** — Stage 4 (Verification) uses the existing code reviewer to verify findings, NOT the auditor agent
 
 **NEVER** re-run the auditor agent at any point during the pipeline. The planner, implementer, and verification reviewer work from health-audit.md and feedback.md.
 
@@ -71,6 +75,7 @@ Auditor agents are **token-expensive**. They run exactly twice in the full lifec
 **Max iterations: 3.**
 
 The planner reads `health-audit.md` instead of `brainstorm.md`. The planner creates ONE unified remediation plan with phases sequenced as:
+
 - **Early phases:** Subtractive work (cleanup, dead code, unused deps) — Hygienist executes these
 - **Later phases:** Additive work (linting, CI, hooks, type strictness) — Fortifier executes these
 
@@ -135,6 +140,7 @@ Process phases sequentially. The orchestrator determines which implementer role 
 **Agent spawn format is the same as main SKILL.md Stage 2, substituting the appropriate role prompt.**
 
 Report between phases:
+
 ```text
 Phase N ([HYGIENIST|FORTIFIER]) approved after M iteration(s).
 Remaining phases: [list]
@@ -142,7 +148,7 @@ Remaining phases: [list]
 
 ## Stage 4: Verification
 
-After all phases are `PHASE_APPROVED`, run a single verification agent that spot-checks the original CRITICAL and HIGH findings.
+After all phases are `PHASE_APPROVED`, run a single verification agent that verifies the original CRITICAL and HIGH findings.
 
 ### 4a: Spawn Verification Agent
 
@@ -157,7 +163,7 @@ After all phases are `PHASE_APPROVED`, run a single verification agent that spot
 <task>
 Version: $ARGUMENTS
 
-This is a VERIFICATION pass after remediation. You are NOT doing a full audit — you are spot-checking that specific CRITICAL and HIGH findings were addressed.
+This is a VERIFICATION pass after remediation. You are NOT doing a full audit — you are verifying that specific CRITICAL and HIGH findings were addressed.
 
 Read docs/plans/$ARGUMENTS/health-audit.md — focus on CRITICAL and HIGH items in the Tech Debt Ledger.
 
@@ -176,7 +182,14 @@ If any CRITICAL/HIGH unverified or tests fail: list the unverified items, then e
 </task>
 ```
 
-### 4b: Assess Results
+### 4b: Persist and Assess Results
+
+The **orchestrator** must write the verification result to feedback.md **before** reporting to the user. This ensures state recovery can detect completion if interrupted.
+
+1. If agent returned `VERIFIED`: **Edit** feedback.md to append `VERIFIED` under a `## Verification` section
+2. If agent returned `UNVERIFIED`: **Edit** feedback.md to append `UNVERIFIED` with the list of unverified items under a `## Verification` section
+
+Then assess:
 
 - If `VERIFIED` → report success
 - If `UNVERIFIED` → report unverified items to user, let them decide
@@ -199,6 +212,8 @@ All remediation is committed and verified.
 ```
 
 ### If unverified
+
+**STOP HERE. Present these options to the user and WAIT for their response. Do NOT choose an option yourself.**
 
 ```text
 Pipeline paused for $ARGUMENTS.

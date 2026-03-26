@@ -4,7 +4,7 @@
 
 ```text
 +-----------+     +----------+     +--------------+     +-----------+     +----------+     +------------+
-| Doc       | --> | Planner  | --> | Plan Reviewer| --> | Doc       | --> | Doc      | --> | Re-Audit   |
+| Doc       | --> | Planner  | --> | Plan Reviewer| --> | Doc       | --> | Doc      | --> | Verify     |
 | Auditor   |     |          |     |              |     | Engineer  |     | Reviewer |     |            |
 +-----------+     +----------+     +--------------+     +-----------+     +----------+     +------------+
                         ^                |                    ^                |                  |
@@ -19,6 +19,7 @@
 ## Intake Document
 
 The intake skill produces `docs/plans/$ARGUMENTS/doc-audit.md` with:
+
 - `type: doc-health` in frontmatter
 - Drift findings (doc exists, doesn't match code)
 - Gap findings (code exists, no doc)
@@ -29,27 +30,30 @@ The intake skill produces `docs/plans/$ARGUMENTS/doc-audit.md` with:
 
 Before starting any stage, detect prior progress:
 
-1. **Check for plan files**: Glob for `docs/plans/$ARGUMENTS/Phase-*.md`
-2. **Check feedback.md** (if it exists):
+1. **Check feedback.md** for `VERIFIED` signal → pipeline already complete, report and stop
+2. **Check for plan files**: Glob for `docs/plans/$ARGUMENTS/Phase-*.md`
+3. **Check feedback.md** (if it exists):
+   - `PHASE_APPROVED` for all phases → enter at Stage 4 (Verification)
    - `PLAN_APPROVED` with no phase progress → enter at Stage 3 (Implementation)
-   - `PHASE_APPROVED` for all phases → enter at Stage 4 (Re-Audit)
    - OPEN `CODE_REVIEW` items → enter at Stage 3 at the correct phase with revision instructions
    - OPEN `PLAN_REVIEW` items → enter at Stage 2 with revision instructions
-3. **Check feedback.md** for `VERIFIED` signal → pipeline complete, report and stop
 4. **No plan files, no feedback.md** → enter at Stage 2 (first run)
 
 Apply the same per-phase state recovery logic from the main SKILL.md (check `PHASE_APPROVED`, OPEN/resolved `CODE_REVIEW`, and git commits per phase).
+
+If `docs/plans/$ARGUMENTS/feedback.md` does not exist, create it with the empty template from `pipeline-protocol.md` before proceeding to any stage.
 
 Report detected state to the user before continuing.
 
 ## Pre-Flight: Role File Validation
 
 Before spawning any agents, verify all required role prompt files exist using **Glob**:
-- `.claude/skills/pipeline/planner.md`
-- `.claude/skills/pipeline/plan_reviewer.md`
-- `.claude/skills/pipeline/doc-engineer.md`
-- `.claude/skills/pipeline/doc-reviewer.md`
-- `.claude/skills/pipeline/doc-auditor.md`
+
+- `skills/pipeline/planner.md`
+- `skills/pipeline/plan_reviewer.md`
+- `skills/pipeline/doc-engineer.md`
+- `skills/pipeline/doc-reviewer.md`
+- `skills/pipeline/doc-auditor.md`
 
 If any file is missing, **stop and report** which files are absent.
 
@@ -62,7 +66,7 @@ Skip this stage — the intake skill (`/doc-health`) already ran the doc auditor
 Auditor agents are **token-expensive**. They run exactly twice in the full lifecycle:
 
 1. **Once during `/doc-health` intake** — produces doc-audit.md
-2. **Never again** — Stage 4 (Verification) uses the existing code reviewer to spot-check findings, NOT the doc auditor agent
+2. **Never again** — Stage 4 (Verification) uses the existing code reviewer to verify findings, NOT the doc auditor agent
 
 **NEVER** re-run the doc auditor agent at any point during the pipeline. The planner, doc engineer, and verification reviewer work from doc-audit.md and feedback.md.
 
@@ -71,6 +75,7 @@ Auditor agents are **token-expensive**. They run exactly twice in the full lifec
 **Max iterations: 3.**
 
 The planner reads `doc-audit.md` instead of `brainstorm.md`. The planner creates ONE remediation plan with phases sequenced as:
+
 - **Early phases:** Content fixes (delete stale, fix drifted, create stubs, fix links)
 - **Later phases:** Prevention tooling (doc linting, link checking, auto-gen, CI)
 
@@ -121,6 +126,7 @@ Loop until `PLAN_APPROVED` or max iterations.
 Process phases sequentially. Agent spawn format matches main SKILL.md Stage 2, substituting the doc-engineer and doc-reviewer role prompts.
 
 Report between phases:
+
 ```text
 Phase N approved after M iteration(s).
 Remaining phases: [list]
@@ -128,7 +134,7 @@ Remaining phases: [list]
 
 ## Stage 4: Verification
 
-After all phases are `PHASE_APPROVED`, run a single verification agent that spot-checks the original DRIFT, STALE, and BROKEN LINK findings.
+After all phases are `PHASE_APPROVED`, run a single verification agent that verifies the original DRIFT, STALE, and BROKEN LINK findings.
 
 ### 4a: Spawn Verification Agent
 
@@ -143,7 +149,7 @@ After all phases are `PHASE_APPROVED`, run a single verification agent that spot
 <task>
 Version: $ARGUMENTS
 
-This is a VERIFICATION pass after remediation. You are NOT doing a full doc audit — you are spot-checking that specific findings were addressed.
+This is a VERIFICATION pass after remediation. You are NOT doing a full doc audit — you are verifying that specific findings were addressed.
 
 Read docs/plans/$ARGUMENTS/doc-audit.md — focus on DRIFT, STALE, and BROKEN LINK findings.
 
@@ -161,7 +167,14 @@ If any unverified: list the unverified items, then end with UNVERIFIED
 </task>
 ```
 
-### 4b: Assess Results
+### 4b: Persist and Assess Results
+
+The **orchestrator** must write the verification result to feedback.md **before** reporting to the user. This ensures state recovery can detect completion if interrupted.
+
+1. If agent returned `VERIFIED`: **Edit** feedback.md to append `VERIFIED` under a `## Verification` section
+2. If agent returned `UNVERIFIED`: **Edit** feedback.md to append `UNVERIFIED` with the list of unverified items under a `## Verification` section
+
+Then assess:
 
 - If `VERIFIED` → report success
 - If `UNVERIFIED` → report unverified items to user, let them decide
@@ -183,6 +196,8 @@ All fixes are committed and verified.
 ```
 
 ### If unverified
+
+**STOP HERE. Present these options to the user and WAIT for their response. Do NOT choose an option yourself.**
 
 ```text
 Pipeline paused for $ARGUMENTS.

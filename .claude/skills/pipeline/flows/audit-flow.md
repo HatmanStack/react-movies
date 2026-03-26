@@ -24,46 +24,53 @@ When multiple intake docs exist, the pipeline creates ONE plan with phases tagge
 ## Intake Documents
 
 Multiple docs exist at `docs/plans/$ARGUMENTS/`:
+
 - `health-audit.md` (if present) — tech debt findings
 - `eval.md` (if present) — 12-pillar scores with remediation targets
 - `doc-audit.md` (if present) — documentation drift findings
 
 ## Phase Tags and Role Routing
 
-| Phase Tag | Implementer Role | Reviewer Role | Work Type |
-|-----------|-----------------|---------------|-----------|
-| `[HYGIENIST]` | `health-hygienist.md` | `health-reviewer.md` | Subtractive: delete dead code, remove unused deps, simplify |
-| `[FORTIFIER]` | `health-fortifier.md` | `health-reviewer.md` | Additive: lint configs, CI, hooks, type strictness |
-| `[IMPLEMENTER]` | `implementer.md` | `reviewer.md` | Code fixes: architecture, error handling, performance, testing |
-| `[DOC-ENGINEER]` | `doc-engineer.md` | `doc-reviewer.md` | Doc fixes: delete stale, fix drift, add prevention |
+| Phase Tag        | Implementer Role      | Reviewer Role        | Work Type                                                      |
+| ---------------- | --------------------- | -------------------- | -------------------------------------------------------------- |
+| `[HYGIENIST]`    | `health-hygienist.md` | `health-reviewer.md` | Subtractive: delete dead code, remove unused deps, simplify    |
+| `[FORTIFIER]`    | `health-fortifier.md` | `health-reviewer.md` | Additive: lint configs, CI, hooks, type strictness             |
+| `[IMPLEMENTER]`  | `implementer.md`      | `reviewer.md`        | Code fixes: architecture, error handling, performance, testing |
+| `[DOC-ENGINEER]` | `doc-engineer.md`     | `doc-reviewer.md`    | Doc fixes: delete stale, fix drift, add prevention             |
 
 ## State Recovery (Resume Detection)
 
 Before starting any stage, detect prior progress:
 
-1. **Check for plan files**: Glob for `docs/plans/$ARGUMENTS/Phase-*.md`
-2. **Check feedback.md** (if it exists):
+1. **Check feedback.md** for `VERIFIED` signal → pipeline already complete, report and stop
+2. **Check for plan files**: Glob for `docs/plans/$ARGUMENTS/Phase-*.md`
+3. **Check feedback.md** (if it exists):
+   - `PHASE_APPROVED` for all phases → enter at Stage 3 (Verification)
    - `PLAN_APPROVED` with no phase progress → enter at Stage 2 (Implementation)
-   - `PHASE_APPROVED` for all phases → enter at Stage 3 (Re-Evaluation)
    - OPEN `CODE_REVIEW` items → enter at Stage 2 at the correct phase with revision instructions
    - OPEN `PLAN_REVIEW` items → enter at Stage 1 with revision instructions
-3. **Check feedback.md** for `VERIFIED` signal → pipeline complete, report and stop
 4. **No plan files, no feedback.md** → enter at Stage 1 (first run)
 
 Apply the same per-phase state recovery logic from the main SKILL.md (check `PHASE_APPROVED`, OPEN/resolved `CODE_REVIEW`, and git commits per phase).
+
+If `docs/plans/$ARGUMENTS/feedback.md` does not exist, create it with the empty template from `pipeline-protocol.md` before proceeding to any stage.
 
 Report detected state to the user before continuing.
 
 ## Pre-Flight: Role File Validation
 
 Before spawning any agents, verify all required role prompt files exist using **Glob**:
-- `.claude/skills/pipeline/planner.md`
-- `.claude/skills/pipeline/plan_reviewer.md`
 
-And based on which intake docs are present:
-- If `health-audit.md`: `.claude/skills/pipeline/health-hygienist.md`, `.claude/skills/pipeline/health-fortifier.md`, `.claude/skills/pipeline/health-reviewer.md`, `.claude/skills/pipeline/health-auditor.md`
-- If `eval.md`: `.claude/skills/pipeline/implementer.md`, `.claude/skills/pipeline/reviewer.md`, `.claude/skills/pipeline/eval-hire.md`, `.claude/skills/pipeline/eval-stress.md`, `.claude/skills/pipeline/eval-day2.md`
-- If `doc-audit.md`: `.claude/skills/pipeline/doc-engineer.md`, `.claude/skills/pipeline/doc-reviewer.md`, `.claude/skills/pipeline/doc-auditor.md`
+- `skills/pipeline/planner.md`
+- `skills/pipeline/plan_reviewer.md`
+
+Also validate the implementer/reviewer roles needed for each phase tag type. Based on which intake docs are present:
+
+- If `health-audit.md`: `skills/pipeline/health-hygienist.md`, `skills/pipeline/health-fortifier.md`, `skills/pipeline/health-reviewer.md`
+- If `eval.md`: `skills/pipeline/implementer.md`, `skills/pipeline/reviewer.md`
+- If `doc-audit.md`: `skills/pipeline/doc-engineer.md`, `skills/pipeline/doc-reviewer.md`
+
+Note: evaluator/auditor role files (eval-hire.md, eval-stress.md, eval-day2.md, health-auditor.md, doc-auditor.md) are NOT needed here — they were used during intake only.
 
 If any file is missing, **stop and report** which files are absent.
 
@@ -72,7 +79,7 @@ If any file is missing, **stop and report** which files are absent.
 Evaluator and auditor agents are **token-expensive**. They run exactly twice in the full lifecycle:
 
 1. **Once during `/audit` intake** — produces the intake docs
-2. **Never again** — Stage 3 (Verification) uses the existing code reviewer to spot-check findings, NOT the evaluator/auditor agents
+2. **Never again** — Stage 3 (Verification) uses the existing code reviewer to verify findings, NOT the evaluator/auditor agents
 
 **NEVER** re-run evaluator or auditor agents at any point during the pipeline. The planner, implementer, and verification reviewer work from the intake docs and feedback.md.
 
@@ -159,18 +166,22 @@ Identify all phases by Glob for `docs/plans/$ARGUMENTS/Phase-*.md` (excluding Ph
 For each phase, read the phase title to determine the tag, then spawn the correct implementer and reviewer:
 
 **[HYGIENIST] phases:**
+
 - Implementer: **Read** `health-hygienist.md`, spawn with hygienist role prompt
 - Reviewer: **Read** `health-reviewer.md`, spawn with health reviewer role prompt
 
 **[FORTIFIER] phases:**
+
 - Implementer: **Read** `health-fortifier.md`, spawn with fortifier role prompt
 - Reviewer: **Read** `health-reviewer.md`, spawn with health reviewer role prompt
 
 **[IMPLEMENTER] phases:**
+
 - Implementer: **Read** `implementer.md`, spawn with standard implementer role prompt
 - Reviewer: **Read** `reviewer.md`, spawn with standard code reviewer role prompt
 
 **[DOC-ENGINEER] phases:**
+
 - Implementer: **Read** `doc-engineer.md`, spawn with doc engineer role prompt
 - Reviewer: **Read** `doc-reviewer.md`, spawn with doc reviewer role prompt
 
@@ -179,6 +190,7 @@ Agent spawn format is the same as main SKILL.md Stage 2, substituting the approp
 Loop until `PHASE_APPROVED` or max iterations per phase.
 
 Report between phases:
+
 ```text
 Phase N [TAG] approved after M iteration(s).
 Remaining phases: [list with tags]
@@ -186,7 +198,7 @@ Remaining phases: [list with tags]
 
 ## Stage 3: Verification
 
-After all phases are `PHASE_APPROVED`, run a single verification agent that spot-checks the original findings from all intake docs. This is NOT a full re-evaluation — it's a targeted check using the existing code reviewer role.
+After all phases are `PHASE_APPROVED`, run a single verification agent that verifies the original findings from all intake docs. This is NOT a full re-evaluation — it's a targeted check using the existing code reviewer role.
 
 ### 3a: Spawn Verification Agent
 
@@ -201,7 +213,7 @@ After all phases are `PHASE_APPROVED`, run a single verification agent that spot
 <task>
 Version: $ARGUMENTS
 
-This is a VERIFICATION pass after remediation. You are NOT doing a full code review — you are spot-checking that specific findings from the original audit were addressed.
+This is a VERIFICATION pass after remediation. You are NOT doing a full code review — you are verifying that specific findings from the original audit were addressed.
 
 Read the original intake docs to get the list of findings:
 - docs/plans/$ARGUMENTS/eval.md (if exists) — check REMEDIATION TARGETS
@@ -222,7 +234,14 @@ If any findings unverified or tests fail: list the unverified items, then end wi
 </task>
 ```
 
-### 3b: Assess Results
+### 3b: Persist and Assess Results
+
+The **orchestrator** must write the verification result to feedback.md **before** reporting to the user. This ensures state recovery can detect completion if interrupted.
+
+1. If agent returned `VERIFIED`: **Edit** feedback.md to append `VERIFIED` under a `## Verification` section
+2. If agent returned `UNVERIFIED`: **Edit** feedback.md to append `UNVERIFIED` with the list of unverified items under a `## Verification` section
+
+Then assess:
 
 - If `VERIFIED` → report success
 - If `UNVERIFIED` → the orchestrator reads the unverified items and decides:
@@ -248,6 +267,8 @@ All remediation is committed and verified.
 ```
 
 ### If unverified: Report to user
+
+**STOP HERE. Present these options to the user and WAIT for their response. Do NOT choose an option yourself.**
 
 ```text
 Pipeline paused for $ARGUMENTS.

@@ -90,6 +90,7 @@ C) Specific directories only (tell me which to include or exclude)
 1. Pillar overrides — by default, the pipeline remediates until all 12 pillars hit 9/10. Some pillars (like Creativity) may not be improvable through code changes. Override lets you set a lower threshold or exclude a pillar from the remediation gate entirely.
 
 The 12 pillars are:
+
 - **Hire lens:** Problem-Solution Fit, Architecture, Code Quality, Creativity
 - **Stress lens:** Pragmatism, Defensiveness, Performance, Type Rigor
 - **Day 2 lens:** Test Value, Reproducibility, Git Hygiene, Onboarding
@@ -199,9 +200,9 @@ Create the directory.
 
 Before spawning agents, read all required role prompt files. Only read prompts for selected audits.
 
-- **If health selected:** Read `.claude/skills/pipeline/health-auditor.md`
-- **If eval selected:** Read `.claude/skills/pipeline/eval-hire.md`, `.claude/skills/pipeline/eval-stress.md`, `.claude/skills/pipeline/eval-day2.md`
-- **If docs selected:** Read `.claude/skills/pipeline/doc-auditor.md`
+- **If health selected:** Read `skills/pipeline/health-auditor.md`
+- **If eval selected:** Read `skills/pipeline/eval-hire.md`, `skills/pipeline/eval-stress.md`, `skills/pipeline/eval-day2.md`
+- **If docs selected:** Read `skills/pipeline/doc-auditor.md`
 
 ### Step 5: Spawn All Agents in Parallel
 
@@ -298,9 +299,19 @@ Constraints: [from Step 2]
 </task>
 ```
 
-### Step 6: Collect Results and Write Intake Docs
+### Step 6: Validate and Write Intake Docs
 
-After all agents complete, the **orchestrator** (you) reads each agent's output and writes the intake docs:
+After all agents complete, verify each agent's output contains its completion signal:
+
+- Health auditor: check for `AUDIT_COMPLETE`
+- Eval hire: check for `EVAL_HIRE_COMPLETE`
+- Eval stress: check for `EVAL_STRESS_COMPLETE`
+- Eval day2: check for `EVAL_DAY2_COMPLETE`
+- Doc auditor: check for `DOC_AUDIT_COMPLETE`
+
+If any signal is missing, the agent may have been truncated. Report the incomplete agent to the user and do NOT write that intake doc with partial data. Other intake docs with valid signals can still be written.
+
+For agents with valid signals, write the intake docs:
 
 - **Health:** Write `docs/plans/YYYY-MM-DD-audit-slug/health-audit.md` with `type: repo-health` in frontmatter
 - **Eval:** Combine all 3 evaluator outputs into `docs/plans/YYYY-MM-DD-audit-slug/eval.md` with `type: repo-eval` and `pillar_overrides` in frontmatter
@@ -308,7 +319,24 @@ After all agents complete, the **orchestrator** (you) reads each agent's output 
 
 See the individual intake skill SKILL.md files (repo-health, repo-eval, doc-health) for the exact output templates.
 
-### Step 7: Handoff
+### Step 7: Log to Manifest
+
+Append an entry to `.claude/skill-runs.json` in the repo root. If the file does not exist, create it with an empty array first. Each entry records when a skill was run so that skill usage can be tracked across repos and OS wipes.
+
+```json
+{
+  "skill": "audit",
+  "date": "YYYY-MM-DD",
+  "plan": "YYYY-MM-DD-audit-slug",
+  "audits": ["health", "eval", "docs"]
+}
+```
+
+- `audits`: list which audits were selected (subset of health, eval, docs)
+- Read the existing file, parse the JSON array, append the new entry, and write it back
+- If the file is malformed, overwrite it with a fresh array containing only the new entry
+
+### Step 8: Handoff
 
 ```text
 Audit complete: docs/plans/YYYY-MM-DD-audit-slug/
