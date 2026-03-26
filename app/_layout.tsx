@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 import FilterPills from '../src/components/FilterPills';
 import { COLORS } from '../src/constants';
 import { initNetworkListener } from '../src/store/movieStore';
+import { ErrorBoundary as AppErrorBoundary } from '../src/components/ErrorBoundary';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -61,6 +62,7 @@ export default function RootLayout(): React.JSX.Element | null {
 function RootLayoutNav(): React.JSX.Element {
   return (
     <PaperProvider theme={theme}>
+      <AppErrorBoundary>
       <Stack>
         <Stack.Screen
           name="index"
@@ -86,6 +88,7 @@ function RootLayoutNav(): React.JSX.Element {
           }}
         />
               </Stack>
+      </AppErrorBoundary>
     </PaperProvider>
   );
 }
