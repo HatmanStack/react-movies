@@ -7,6 +7,7 @@ import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import 'react-native-reanimated';
 import FilterPills from '../src/components/FilterPills';
 import { COLORS } from '../src/constants';
+import { initNetworkListener } from '../src/store/movieStore';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -43,6 +44,12 @@ export default function RootLayout(): React.JSX.Element | null {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
+
+  // Initialize network listener with proper cleanup
+  useEffect(() => {
+    const unsubscribe = initNetworkListener();
+    return unsubscribe;
+  }, []);
 
   if (!loaded) {
     return null;

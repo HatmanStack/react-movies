@@ -430,9 +430,18 @@ export const useMovieStore = create<MovieStore>((set, get) => ({
   },
 }));
 
-// Subscribe to NetInfo for network status updates
-NetInfo.addEventListener((state: NetInfoState) => {
-  // On web, isInternetReachable can be null initially - treat null as reachable
-  const isOffline = state.isConnected === false || state.isInternetReachable === false;
-  useMovieStore.getState().setOfflineStatus(isOffline);
-});
+/**
+ * Initialize the NetInfo network listener.
+ * Call from app entry point (e.g., _layout.tsx useEffect) to avoid
+ * side effects on module import (tests, SSR).
+ *
+ * @returns Unsubscribe function for cleanup
+ */
+export function initNetworkListener(): () => void {
+  const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
+    // On web, isInternetReachable can be null initially - treat null as reachable
+    const isOffline = state.isConnected === false || state.isInternetReachable === false;
+    useMovieStore.getState().setOfflineStatus(isOffline);
+  });
+  return unsubscribe;
+}
