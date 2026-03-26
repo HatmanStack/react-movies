@@ -51,6 +51,10 @@ export default function HomeScreen(): React.JSX.Element {
   const showFavorites = useFilterStore((state) => state.showFavorites);
   const getActiveFilters = useFilterStore((state) => state.getActiveFilters);
 
+  // Track whether the initial mount effect has run
+  const isInitialMount = useRef(true);
+  const isInitialFocus = useRef(true);
+
   // Initial data sync on mount with cleanup
   useEffect(() => {
     const controller = new AbortController();
@@ -76,24 +80,28 @@ export default function HomeScreen(): React.JSX.Element {
     };
   }, [loadMoviesFromFilters, getActiveFilters, syncMoviesWithAPI]);
 
-  // Reload movies when filters change
+  // Reload movies when filters change (skip initial render)
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     const controller = new AbortController();
-
     const activeFilters = getActiveFilters();
     loadMoviesFromFilters(activeFilters, controller.signal);
-
     return () => controller.abort();
   }, [showPopular, showTopRated, showFavorites, getActiveFilters, loadMoviesFromFilters]);
 
-  // Reload movies when screen comes into focus
+  // Reload movies when screen comes into focus (skip initial focus)
   useFocusEffect(
     useCallback(() => {
+      if (isInitialFocus.current) {
+        isInitialFocus.current = false;
+        return;
+      }
       const controller = new AbortController();
-
       const activeFilters = getActiveFilters();
       loadMoviesFromFilters(activeFilters, controller.signal);
-
       return () => controller.abort();
     }, [getActiveFilters, loadMoviesFromFilters])
   );
