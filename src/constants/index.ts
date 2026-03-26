@@ -126,6 +126,7 @@ export const PLACEHOLDERS = {
 export const COLORS = {
   PRIMARY: '#1976D2',
   SECONDARY: '#FFC107',
+  ACCENT: '#FF5722',
   FAVORITE: '#E91E63',
   RATING: '#FFC107',
   ERROR: '#f44336',

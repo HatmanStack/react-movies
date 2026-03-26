@@ -6,6 +6,7 @@ import React, { useEffect } from 'react';
 import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import 'react-native-reanimated';
 import FilterPills from '../src/components/FilterPills';
+import { COLORS } from '../src/constants';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -20,9 +21,9 @@ const theme = {
   ...MD3LightTheme,
   colors: {
     ...MD3LightTheme.colors,
-    primary: '#1976D2', // Blue primary color (matching Android)
-    secondary: '#FF5722', // Orange-red accent color
-    tertiary: '#FFC107', // Amber for favorites/stars
+    primary: COLORS.PRIMARY,
+    secondary: COLORS.ACCENT,
+    tertiary: COLORS.SECONDARY,
   },
 };
 
