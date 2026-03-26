@@ -81,8 +81,8 @@ export async function initDatabase(): Promise<void> {
       // Restore favorite flags (rows will be re-fetched from API, but IDs are marked)
       for (const fav of favorites) {
         await db.runAsync(
-          "INSERT OR IGNORE INTO movie_details (id, title, overview, poster_path, backdrop_path, release_date, vote_average, vote_count, popularity, original_language, favorite) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
-          [fav.id, "", "", null, null, "", 0, 0, 0, ""],
+          "INSERT OR IGNORE INTO movie_details (id, title, overview, poster_path, release_date, vote_average, vote_count, popularity, original_language, favorite, toprated, popular) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 0)",
+          [fav.id, "", "", null, "", 0, 0, 0, ""],
         );
       }
       await db.runAsync("UPDATE database_version SET version = ?", [
