@@ -2,9 +2,37 @@
 
 ## Active Feedback
 
-(No open items.)
+(none)
 
 ## Resolved Feedback
+
+### [CODE_REVIEW] Phase 2: type-check fails due to AsyncStorage.multiSet type error
+- **Status:** RESOLVED
+- **Phase:** Phase-2, Task 6
+- **Commit:** 2f309bc
+- **Detail:** `npm run type-check` produces two errors in `src/database/webStorage.ts` (lines 106 and 156): `Property 'multiSet' does not exist on type 'AsyncStorage'`. The Phase 2 spec requires `npm run type-check` to pass. The `multiSet` method exists at runtime on the default export of `@react-native-async-storage/async-storage`, but the TypeScript types for the version installed do not expose it on the type used here. Was the type signature of AsyncStorage's default export checked before using `multiSet`? Does the installed version's type declaration export `multiSet` as a standalone function rather than a method on the default export?
+- **Resolution:** The installed AsyncStorage version's type declarations use `setMany(entries: Record<string, string>)` instead of `multiSet(pairs: [string, string][])`. Replaced all `multiSet` calls with `setMany` using Record objects. Added `setMany` and `getMany` mocks to jest.setup.js.
+
+### [CODE_REVIEW] Phase 2: Video/review batch functions not updated to use multiSet
+- **Status:** RESOLVED
+- **Phase:** Phase-2, Task 6
+- **Commit:** 2f309bc
+- **Detail:** The spec for Task 6 says to "apply the same pattern to any other batch write functions (check for similar patterns in video and review batch inserts)." `webInsertVideos` (line 297) and `webInsertReviews` (line 372) still use individual `AsyncStorage.setItem` calls. While these write to a single key per call (all videos for one movie), the spec explicitly calls out checking these functions. Was this intentional or an oversight?
+- **Resolution:** Updated `webInsertVideos` and `webInsertReviews` to use `AsyncStorage.setMany` instead of individual `setItem` calls, consistent with the batch write pattern.
+
+### [CODE_REVIEW] Phase 2: Task 7 not implemented (raw console calls in init.ts)
+- **Status:** RESOLVED
+- **Phase:** Phase-2, Task 7
+- **Commit:** 0d4a402
+- **Detail:** `src/database/init.ts` still contains 7 raw `console.log`/`console.error` calls (lines 42, 74, 77, 79, 103, 127, 158). The spec requires replacing all of them with `logInfo`/`logError` from `src/utils/errorHandler.ts`. No commit exists for this task. Was Task 7 skipped or forgotten?
+- **Resolution:** Replaced all 7 raw console.log/console.error calls with logInfo/logError from errorHandler.ts using 'DatabaseInit' as the context string. No raw console calls remain in init.ts.
+
+### [CODE_REVIEW] Phase 2: Task 8 not implemented (theme color unification)
+- **Status:** RESOLVED
+- **Phase:** Phase-2, Task 8
+- **Commit:** 8de099c
+- **Detail:** `app/_layout.tsx` (lines 23-26) still hardcodes hex color values (`'#1976D2'`, `'#FF5722'`, `'#FFC107'`) in the theme definition instead of importing from the `COLORS` constant in `src/constants/index.ts`. The spec requires eliminating hardcoded hex values and using `COLORS` as the single source of truth. No commit exists for this task. Note also that the theme's `secondary` value (`#FF5722`) differs from `COLORS.SECONDARY` (`#FFC107`), so unifying will require deciding which value is correct and potentially adding missing entries (e.g., `ACCENT` or similar) to the COLORS constant.
+- **Resolution:** Added `ACCENT: '#FF5722'` to the COLORS constant for the orange-red theme secondary. Updated _layout.tsx to use `COLORS.PRIMARY`, `COLORS.ACCENT`, and `COLORS.SECONDARY` instead of hardcoded hex values. No hardcoded color values remain in the theme definition.
 
 ### [CODE_REVIEW] Phase 1: Sitemap references deleted modal route
 - **Status:** RESOLVED

@@ -301,12 +301,12 @@ movie_details cache table.
 6. Add logging to `safeJsonParse` (around line 36) where the catch block currently swallows errors silently. Import `logWarn` from `../utils/errorHandler` and log a warning with the key that failed to parse.
 
 **Verification Checklist:**
-- [ ] `webInsertMovies` uses `multiSet` instead of individual `setItem` calls
-- [ ] `webInsertMovie` uses `multiSet` for its writes
-- [ ] Similar batch functions for videos/reviews also updated
-- [ ] `safeJsonParse` logs a warning on parse failure
-- [ ] `npm run type-check` passes
-- [ ] `npm test` passes
+- [x] `webInsertMovies` uses `setMany` instead of individual `setItem` calls
+- [x] `webInsertMovie` uses `setMany` for its writes
+- [x] Similar batch functions for videos/reviews also updated
+- [x] `safeJsonParse` logs a warning on parse failure
+- [x] `npm run type-check` passes
+- [x] `npm test` passes
 
 **Commit Message Template:**
 ```
@@ -335,10 +335,10 @@ in web storage layer. Add warning logging to safeJsonParse.
 5. Verify the logging functions accept the same argument patterns (string message, context string, optional metadata object).
 
 **Verification Checklist:**
-- [ ] No raw `console.log` or `console.error` calls remain in `init.ts`
-- [ ] All logging goes through `logInfo`/`logError` from errorHandler
-- [ ] `npm run type-check` passes
-- [ ] `npm test` passes
+- [x] No raw `console.log` or `console.error` calls remain in `init.ts`
+- [x] All logging goes through `logInfo`/`logError` from errorHandler
+- [x] `npm run type-check` passes
+- [x] `npm test` passes
 
 **Commit Message Template:**
 ```
@@ -367,10 +367,10 @@ in database initialization for consistent structured logging.
 5. Verify the app still renders correctly (visual check not strictly required, but type-check and tests should pass).
 
 **Verification Checklist:**
-- [ ] No hardcoded hex color values in `_layout.tsx` theme definition
-- [ ] Theme uses `COLORS` from `src/constants/index.ts`
-- [ ] `npm run type-check` passes
-- [ ] `npm test` passes
+- [x] No hardcoded hex color values in `_layout.tsx` theme definition
+- [x] Theme uses `COLORS` from `src/constants/index.ts`
+- [x] `npm run type-check` passes
+- [x] `npm test` passes
 
 **Commit Message Template:**
 ```
