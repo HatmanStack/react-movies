@@ -41,10 +41,10 @@ Fix component-level issues (hardcoded URLs, triple useEffect firing, NetInfo glo
 6. Run MovieCard tests: `npx jest __tests__/components/MovieCard.test.tsx`
 
 **Verification Checklist:**
-- [ ] No hardcoded `image.tmdb.org` URL in MovieCard
-- [ ] Uses `TMDbService.getPosterUrl()` for poster URL construction
-- [ ] `npm run type-check` passes
-- [ ] `npx jest __tests__/components/MovieCard.test.tsx` passes
+- [x] No hardcoded `image.tmdb.org` URL in MovieCard
+- [x] Uses `TMDbService.getPosterUrl()` for poster URL construction
+- [x] `npm run type-check` passes
+- [x] `npx jest __tests__/components/MovieCard.test.tsx` passes
 
 **Commit Message Template:**
 ```
@@ -96,12 +96,12 @@ poster URL method for consistency with details screen.
 7. Run tests to verify no regressions.
 
 **Verification Checklist:**
-- [ ] Only one database read happens on initial mount
-- [ ] Filter changes still trigger a reload
-- [ ] Screen focus still triggers a reload (if kept)
-- [ ] Initial render does not fire redundant loads
-- [ ] `npm run type-check` passes
-- [ ] `npm test` passes
+- [x] Only one database read happens on initial mount
+- [x] Filter changes still trigger a reload
+- [x] Screen focus still triggers a reload (if kept)
+- [x] Initial render does not fire redundant loads
+- [x] `npm run type-check` passes
+- [x] `npm test` passes
 
 **Commit Message Template:**
 ```
@@ -137,11 +137,11 @@ Only the mount effect handles first load.
 6. Check `jest.setup.js` for any NetInfo mock setup that may need adjustment.
 
 **Verification Checklist:**
-- [ ] No `NetInfo.addEventListener` call at module scope
-- [ ] Network listener initialized from `_layout.tsx` with cleanup
-- [ ] Tests do not trigger NetInfo subscription on import
-- [ ] `npm run type-check` passes
-- [ ] `npm test` passes
+- [x] No `NetInfo.addEventListener` call at module scope
+- [x] Network listener initialized from `_layout.tsx` with cleanup
+- [x] Tests do not trigger NetInfo subscription on import
+- [x] `npm run type-check` passes
+- [x] `npm test` passes
 
 **Commit Message Template:**
 ```
@@ -170,9 +170,9 @@ initialized from _layout.tsx with proper cleanup.
 5. If ErrorBoundary accepts a fallback prop, provide a reasonable fallback UI.
 
 **Verification Checklist:**
-- [ ] ErrorBoundary wraps the root app content in `_layout.tsx`
-- [ ] `npm run type-check` passes
-- [ ] `npm test` passes
+- [x] ErrorBoundary wraps the root app content in `_layout.tsx`
+- [x] `npm run type-check` passes
+- [x] `npm test` passes
 
 **Commit Message Template:**
 ```
@@ -218,10 +218,10 @@ of showing a white screen.
 4. Place the concurrency helper in the same file (private function) or in `src/utils/` if it could be reused.
 
 **Verification Checklist:**
-- [ ] Thumbnail fetches are limited to a fixed concurrency (e.g., 5)
-- [ ] Results are still in the correct order
-- [ ] `npm run type-check` passes
-- [ ] `npm test` passes
+- [x] Thumbnail fetches are limited to a fixed concurrency (e.g., 5)
+- [x] Results are still in the correct order
+- [x] `npm run type-check` passes
+- [x] `npm test` passes
 
 **Commit Message Template:**
 ```
@@ -256,10 +256,10 @@ overwhelming the API under high video counts.
 6. Run both test files.
 
 **Verification Checklist:**
-- [ ] No `expect(true).toBe(true)` anywhere in the test suite
-- [ ] Replacement tests assert real component behavior
-- [ ] `npx jest __tests__/components/MovieCard.test.tsx` passes
-- [ ] `npx jest __tests__/components/VideoCard.test.tsx` passes
+- [x] No `expect(true).toBe(true)` anywhere in the test suite
+- [x] Replacement tests assert real component behavior
+- [x] `npx jest __tests__/components/MovieCard.test.tsx` passes
+- [x] `npx jest __tests__/components/VideoCard.test.tsx` passes
 
 **Commit Message Template:**
 ```
@@ -288,9 +288,9 @@ tests. Add meaningful assertions for component behavior.
 5. If rewriting as integration tests is too complex for this phase, go with Option B and add a comment noting that real screen-level integration tests are a future improvement.
 
 **Verification Checklist:**
-- [ ] Tests in `movieFlow.test.tsx` either render components or are moved to unit tests
-- [ ] Test descriptions accurately describe what is being tested
-- [ ] `npm test` passes
+- [x] Tests in `movieFlow.test.tsx` either render components or are moved to unit tests
+- [x] Test descriptions accurately describe what is being tested
+- [x] `npm test` passes
 
 **Commit Message Template:**
 ```
