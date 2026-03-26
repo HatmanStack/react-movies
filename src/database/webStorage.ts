@@ -14,6 +14,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MovieDetails, VideoDetails, ReviewDetails } from '../models/types';
+import { logWarn } from '../utils/errorHandler';
 
 // Storage keys
 const KEYS = {
@@ -29,11 +30,12 @@ const KEYS = {
 /**
  * Safe JSON parse with fallback
  */
-function safeJsonParse<T>(json: string | null, fallback: T): T {
+function safeJsonParse<T>(json: string | null, fallback: T, key?: string): T {
   if (!json) return fallback;
   try {
     return JSON.parse(json) as T;
   } catch {
+    logWarn(`Failed to parse JSON${key ? ` for key "${key}"` : ''}`, 'webStorage');
     return fallback;
   }
 }
@@ -66,10 +68,7 @@ export async function webInsertMovie(movie: MovieDetails): Promise<void> {
 
   // Get current movie to check if updating categories
   const existingJson = await AsyncStorage.getItem(movieKey);
-  const existing = existingJson ? safeJsonParse<MovieDetails | null>(existingJson, null) : null;
-
-  // Store the movie
-  await AsyncStorage.setItem(movieKey, JSON.stringify(movie));
+  const existing = existingJson ? safeJsonParse<MovieDetails | null>(existingJson, null, movieKey) : null;
 
   // Update all indexes atomically
   const [allIds, favoriteIds, popularIds, topratedIds] = await Promise.all([
@@ -103,13 +102,14 @@ export async function webInsertMovie(movie: MovieDetails): Promise<void> {
     topratedIds.delete(movie.id);
   }
 
-  // Save all indexes in parallel
-  await Promise.all([
-    saveIndexSet(KEYS.MOVIES_INDEX, allIds),
-    saveIndexSet(KEYS.FAVORITES_INDEX, favoriteIds),
-    saveIndexSet(KEYS.POPULAR_INDEX, popularIds),
-    saveIndexSet(KEYS.TOPRATED_INDEX, topratedIds),
-  ]);
+  // Batch write movie + all indexes in a single setMany call
+  await AsyncStorage.setMany({
+    [movieKey]: JSON.stringify(movie),
+    [KEYS.MOVIES_INDEX]: JSON.stringify([...allIds]),
+    [KEYS.FAVORITES_INDEX]: JSON.stringify([...favoriteIds]),
+    [KEYS.POPULAR_INDEX]: JSON.stringify([...popularIds]),
+    [KEYS.TOPRATED_INDEX]: JSON.stringify([...topratedIds]),
+  });
 }
 
 /**
@@ -145,15 +145,16 @@ export async function webInsertMovies(movies: MovieDetails[]): Promise<void> {
     }
   }
 
-  // Batch write all movies + indexes
-  const allEntries: [string, string][] = [
-    ...writes,
-    [KEYS.MOVIES_INDEX, JSON.stringify([...allIds])],
-    [KEYS.FAVORITES_INDEX, JSON.stringify([...favoriteIds])],
-    [KEYS.POPULAR_INDEX, JSON.stringify([...popularIds])],
-    [KEYS.TOPRATED_INDEX, JSON.stringify([...topratedIds])],
-  ];
-  await Promise.all(allEntries.map(([key, value]) => AsyncStorage.setItem(key, value)));
+  // Batch write all movies + indexes in a single setMany call
+  const allEntries: Record<string, string> = {};
+  for (const [key, value] of writes) {
+    allEntries[key] = value;
+  }
+  allEntries[KEYS.MOVIES_INDEX] = JSON.stringify([...allIds]);
+  allEntries[KEYS.FAVORITES_INDEX] = JSON.stringify([...favoriteIds]);
+  allEntries[KEYS.POPULAR_INDEX] = JSON.stringify([...popularIds]);
+  allEntries[KEYS.TOPRATED_INDEX] = JSON.stringify([...topratedIds]);
+  await AsyncStorage.setMany(allEntries);
 }
 
 /**
@@ -294,7 +295,7 @@ export async function webInsertVideos(
     }
   }
 
-  await AsyncStorage.setItem(key, JSON.stringify(videos));
+  await AsyncStorage.setMany({ [key]: JSON.stringify(videos) });
 }
 
 /**
@@ -369,7 +370,7 @@ export async function webInsertReviews(
     }
   }
 
-  await AsyncStorage.setItem(key, JSON.stringify(reviews));
+  await AsyncStorage.setMany({ [key]: JSON.stringify(reviews) });
 }
 
 /**
