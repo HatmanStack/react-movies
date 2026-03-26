@@ -8,6 +8,7 @@ import { Platform } from 'react-native';
 import * as SQLite from 'expo-sqlite';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SCHEMA_STATEMENTS, CURRENT_DB_VERSION } from './schema';
+import { logInfo, logError } from '../utils/errorHandler';
 
 /**
  * Singleton database instance
@@ -39,7 +40,7 @@ export async function initDatabase(): Promise<void> {
       // Web platform: just mark as initialized
       await AsyncStorage.setItem('db_initialized', 'true');
       await AsyncStorage.setItem('db_version', String(CURRENT_DB_VERSION));
-      console.log('Database initialized successfully (web mode - using AsyncStorage)');
+      logInfo('Database initialized successfully (web mode - using AsyncStorage)', 'DatabaseInit');
       return;
     }
 
@@ -71,12 +72,12 @@ export async function initDatabase(): Promise<void> {
       await db.runAsync('UPDATE database_version SET version = ?', [
         CURRENT_DB_VERSION,
       ]);
-      console.log(`Database migrated from version ${versionRow.version} to ${CURRENT_DB_VERSION}`);
+      logInfo(`Database migrated from version ${versionRow.version} to ${CURRENT_DB_VERSION}`, 'DatabaseInit');
     }
 
-    console.log('Database initialized successfully');
+    logInfo('Database initialized successfully', 'DatabaseInit');
   } catch (error) {
-    console.error('Failed to initialize database:', error);
+    logError(error, 'DatabaseInit');
     throw new Error(
       `Database initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
@@ -100,7 +101,7 @@ export function getDatabase(): SQLite.SQLiteDatabase {
     try {
       database = SQLite.openDatabaseSync(DB_NAME);
     } catch (error) {
-      console.error('Failed to open database:', error);
+      logError(error, 'DatabaseInit');
       throw new Error(
         `Failed to open database: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -124,7 +125,7 @@ export function closeDatabase(): void {
       database.closeSync();
       database = null;
     } catch (error) {
-      console.error('Failed to close database:', error);
+      logError(error, 'DatabaseInit');
     }
   }
 }
@@ -155,7 +156,7 @@ export async function resetDatabase(): Promise<void> {
     // Reinitialize
     await initDatabase();
   } catch (error) {
-    console.error('Failed to reset database:', error);
+    logError(error, 'DatabaseInit');
     throw error;
   }
 }
