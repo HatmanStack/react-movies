@@ -5,6 +5,7 @@
 Add preventive guardrails: pre-commit hooks for lint/format/type-check, startup environment validation, and conventional commit enforcement. These prevent the same categories of issues from recurring.
 
 **Success criteria:**
+
 - Pre-commit hooks run lint-staged on staged files
 - Commit messages validated against conventional commits format
 - API keys validated at startup with clear error messages
@@ -25,6 +26,7 @@ Add preventive guardrails: pre-commit hooks for lint/format/type-check, startup 
 **Goal:** Prevent broken code from being committed. Run ESLint and Prettier on staged files before every commit.
 
 **Files to Modify/Create:**
+
 - `package.json` - Add `husky`, `lint-staged` dev dependencies; add `prepare` script
 - `.husky/pre-commit` - Pre-commit hook file (created by husky init)
 - `.lintstagedrc.json` or `package.json` lint-staged config
@@ -32,6 +34,7 @@ Add preventive guardrails: pre-commit hooks for lint/format/type-check, startup 
 **Prerequisites:** None
 
 **Implementation Steps:**
+
 1. Install dev dependencies: `npm install --save-dev husky lint-staged`
 2. Initialize husky: `npx husky init`
 3. This creates a `.husky/pre-commit` file. Set its content to:
@@ -52,14 +55,16 @@ Add preventive guardrails: pre-commit hooks for lint/format/type-check, startup 
 6. Test the hook by staging a file and committing.
 
 **Verification Checklist:**
-- [ ] `husky` and `lint-staged` in devDependencies
-- [ ] `.husky/pre-commit` exists and runs `lint-staged`
-- [ ] `prepare` script in package.json
-- [ ] lint-staged config targets `.ts`, `.tsx`, `.json`, `.md` files
-- [ ] `npm run lint` passes
-- [ ] `npm test` passes
+
+- [x] `husky` and `lint-staged` in devDependencies
+- [x] `.husky/pre-commit` exists and runs `lint-staged`
+- [x] `prepare` script in package.json
+- [x] lint-staged config targets `.ts`, `.tsx`, `.json`, `.md` files
+- [x] `npm run lint` passes
+- [x] `npm test` passes
 
 **Commit Message Template:**
+
 ```
 ci(hooks): add pre-commit hooks with husky and lint-staged
 
@@ -74,6 +79,7 @@ to catch issues early.
 **Goal:** Enforce conventional commit message format to improve git hygiene (currently scored 4/10).
 
 **Files to Modify/Create:**
+
 - `package.json` - Add `@commitlint/cli`, `@commitlint/config-conventional` dev dependencies
 - `.commitlintrc.json` - Commitlint configuration
 - `.husky/commit-msg` - Commit message hook
@@ -81,6 +87,7 @@ to catch issues early.
 **Prerequisites:** Task 1 (husky installed)
 
 **Implementation Steps:**
+
 1. Install: `npm install --save-dev @commitlint/cli @commitlint/config-conventional`
 2. Create `.commitlintrc.json`:
    ```json
@@ -92,13 +99,15 @@ to catch issues early.
 4. Test by attempting a commit with a non-conventional message (should fail) and a conventional one (should pass).
 
 **Verification Checklist:**
-- [ ] `@commitlint/cli` and `@commitlint/config-conventional` in devDependencies
-- [ ] `.commitlintrc.json` exists with conventional config
-- [ ] `.husky/commit-msg` hook exists and calls commitlint
-- [ ] Non-conventional commit messages are rejected
-- [ ] `npm test` passes
+
+- [x] `@commitlint/cli` and `@commitlint/config-conventional` in devDependencies
+- [x] `.commitlintrc.json` exists with conventional config
+- [x] `.husky/commit-msg` hook exists and calls commitlint
+- [x] Non-conventional commit messages are rejected
+- [x] `npm test` passes
 
 **Commit Message Template:**
+
 ```
 ci(hooks): enforce conventional commits with commitlint
 
@@ -113,15 +122,18 @@ to maintain consistent git history going forward.
 **Goal:** API keys are read from `process.env` at module scope with no startup validation. The app loads fine but fails on first API call. This is MEDIUM finding #7. Add explicit validation at startup.
 
 **Files to Modify:**
+
 - `src/utils/envValidation.ts` (new file) - Environment validation function
 - `app/_layout.tsx` - Call validation on app startup
 
 **Prerequisites:** None
 
 **Implementation Steps:**
+
 1. Create `src/utils/envValidation.ts`:
+
    ```typescript
-   import { logError, logWarn } from './errorHandler';
+   import { logError, logWarn } from "./errorHandler";
 
    interface EnvConfig {
      TMDB_API_KEY: string;
@@ -133,13 +145,16 @@ to maintain consistent git history going forward.
      const youtubeKey = process.env.EXPO_PUBLIC_YOUTUBE_API_KEY;
 
      if (!tmdbKey) {
-       const msg = 'EXPO_PUBLIC_TMDB_API_KEY is not set. API calls will fail.';
-       logError(new Error(msg), 'EnvValidation');
+       const msg = "EXPO_PUBLIC_TMDB_API_KEY is not set. API calls will fail.";
+       logError(new Error(msg), "EnvValidation");
        throw new Error(msg);
      }
 
      if (!youtubeKey) {
-       logWarn('EXPO_PUBLIC_YOUTUBE_API_KEY is not set. Trailer thumbnails will use defaults.', 'EnvValidation');
+       logWarn(
+         "EXPO_PUBLIC_YOUTUBE_API_KEY is not set. Trailer thumbnails will use defaults.",
+         "EnvValidation",
+       );
      }
 
      return {
@@ -148,18 +163,21 @@ to maintain consistent git history going forward.
      };
    }
    ```
+
 2. In `app/_layout.tsx`, call `validateEnvironment()` early in the component or at module scope. Since this is an Expo app (not serverless), calling it in a `useEffect` on mount is fine. A module-scope call would fail fast on import, which may be preferable.
 3. Consider: the TMDb service already checks for the key at request time (line 52). The startup validation adds fail-fast behavior so the error appears immediately, not on first user interaction.
 4. If using module-scope validation, wrap in try-catch so the app can still show a useful error screen instead of crashing.
 
 **Verification Checklist:**
-- [ ] `envValidation.ts` created with validation logic
-- [ ] Missing TMDB key causes an immediate, clear error
-- [ ] Missing YouTube key logs a warning but does not throw
-- [ ] `npm run type-check` passes
-- [ ] `npm test` passes (tests mock env vars in jest.setup.js)
+
+- [x] `envValidation.ts` created with validation logic
+- [x] Missing TMDB key causes an immediate, clear error
+- [x] Missing YouTube key logs a warning but does not throw
+- [x] `npm run type-check` passes
+- [x] `npm test` passes (tests mock env vars in jest.setup.js)
 
 **Commit Message Template:**
+
 ```
 fix(env): add startup environment variable validation
 
@@ -174,11 +192,13 @@ missing instead of silently failing on first API call.
 **Goal:** CI uses Node.js 24 but package.json has no `engines` field. README says Node 18+. Set the authoritative minimum. This is config drift from the doc audit.
 
 **Files to Modify:**
+
 - `package.json` - Add `engines` field
 
 **Prerequisites:** None
 
 **Implementation Steps:**
+
 1. Add to `package.json`:
    ```json
    "engines": {
@@ -189,11 +209,13 @@ missing instead of silently failing on first API call.
 3. This will be referenced when fixing the README in Phase 5.
 
 **Verification Checklist:**
-- [ ] `engines.node` field present in package.json
-- [ ] Value is reasonable for the dependency set
-- [ ] `npm test` passes
+
+- [x] `engines.node` field present in package.json
+- [x] Value is reasonable for the dependency set
+- [x] `npm test` passes
 
 **Commit Message Template:**
+
 ```
 chore(config): add engines field to package.json
 
