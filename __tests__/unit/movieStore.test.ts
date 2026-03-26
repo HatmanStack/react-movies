@@ -327,3 +327,35 @@ describe('movieStore - setOfflineStatus', () => {
     expect(useMovieStore.getState().isOffline).toBe(false);
   });
 });
+
+describe('movieStore - state management', () => {
+  beforeEach(() => {
+    useMovieStore.setState({
+      movies: [],
+      loading: false,
+      error: null,
+      syncing: false,
+      isOffline: false,
+    });
+  });
+
+  it('reflects loading state when set directly', () => {
+    useMovieStore.setState({ movies: [], loading: true });
+
+    const state = useMovieStore.getState();
+    expect(state.loading).toBe(true);
+    expect(state.movies.length).toBe(0);
+  });
+
+  it('reflects error state when set directly', () => {
+    useMovieStore.setState({
+      movies: [],
+      loading: false,
+      error: 'Failed to load movies',
+    });
+
+    const state = useMovieStore.getState();
+    expect(state.error).toBe('Failed to load movies');
+    expect(state.loading).toBe(false);
+  });
+});

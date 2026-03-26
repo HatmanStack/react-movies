@@ -124,23 +124,4 @@ describe('Integration: Movie Flow', () => {
     });
   });
 
-  it('handles loading state correctly', () => {
-    useMovieStore.setState({ movies: [], loading: true });
-
-    const state = useMovieStore.getState();
-    expect(state.loading).toBe(true);
-    expect(state.movies.length).toBe(0);
-  });
-
-  it('handles error state correctly', () => {
-    useMovieStore.setState({
-      movies: [],
-      loading: false,
-      error: 'Failed to load movies',
-    });
-
-    const state = useMovieStore.getState();
-    expect(state.error).toBe('Failed to load movies');
-    expect(state.loading).toBe(false);
-  });
 });
