@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { MovieDetails } from '../models/types';
 import { ANIMATION, COLORS } from '../constants';
+import { TMDbService } from '../api/tmdb';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -38,8 +39,8 @@ const MovieCard: React.FC<MovieCardProps> = React.memo(({ movie, onPress }) => {
     transform: [{ scale: scale.value }],
   }));
 
-  // TMDb image base URL (w342 for optimal card size)
-  const posterUrl = `https://image.tmdb.org/t/p/w342${poster_path}`;
+  // Poster URL via centralized TMDbService helper
+  const posterUrl = TMDbService.getPosterUrl(poster_path);
 
   return (
     <AnimatedPressable
