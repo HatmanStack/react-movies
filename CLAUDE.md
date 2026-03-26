@@ -20,24 +20,35 @@ npm run format             # Prettier formatting
 ## Architecture
 
 **Expo Router (file-based routing)** in `/app/`:
+
 - `/app/index.tsx` — Home screen (movie grid with infinite scroll)
 - `/app/details/[id].tsx` — Movie details (trailers, reviews)
-- `/app/_layout.tsx` — Root layout with React Native Paper theme
+- `/app/_layout.tsx` — Root layout with React Native Paper theme and ErrorBoundary
+- `/app/+html.tsx` — Custom HTML wrapper for web builds
 
 **State management**: Zustand stores in `/src/store/`:
-- `movieStore.ts` — Movie data, pagination, offline mode, favorites (with optimistic updates and AbortController cancellation)
+
+- `movieStore.ts` — Movie data, pagination, offline mode, favorites (optimistic updates, AbortController cancellation, consolidated sync method)
 - `filterStore.ts` — Filter toggles (Popular, Top Rated, Favorites)
 
 **API layer** in `/src/api/`:
+
 - `tmdb.ts` — TMDb API with retry logic (3 attempts, exponential backoff) and Zod validation
 - `youtube.ts` — YouTube trailer thumbnails with fallback
 
 **Database layer** in `/src/database/`:
+
 - Platform-aware: expo-sqlite on native, AsyncStorage on web
 - `schema.ts` defines tables (`movie_details`, `video_details`, `review_details`)
 - `queries.ts` has type-safe query functions with batch operations and transactions (native)
 
 **Validation**: Zod schemas in `/src/validation/` validate all API responses.
+
+**Utilities** in `/src/utils/`:
+
+- `envValidation.ts` — Validates required environment variables at startup
+- `errorHandler.ts` — Structured logging (`logInfo`, `logError`, `logWarn`)
+- `seo.ts` — Dynamic meta tags and JSON-LD structured data (web only)
 
 ## Key Patterns
 
@@ -46,7 +57,7 @@ npm run format             # Prettier formatting
 - **Offline support**: NetInfo listener in movieStore triggers offline mode with cached SQLite/AsyncStorage data
 - **Components use React Native Paper** (Material Design 3) — wrap test renders in `<PaperProvider>`
 - **expo-image** with blurhash placeholders and memory-disk caching policy
-- **SEO** (web only): Dynamic meta tags, JSON-LD structured data in `/src/utils/seo.ts`
+- **SEO** (web only): Dynamic meta tags, JSON-LD structured data
 
 ## Testing
 
@@ -58,6 +69,7 @@ npm run format             # Prettier formatting
 ## Environment
 
 Requires `.env` with:
+
 ```
 EXPO_PUBLIC_TMDB_API_KEY=<tmdb_api_key>
 EXPO_PUBLIC_YOUTUBE_API_KEY=<youtube_api_key>  # optional, falls back to default thumbnails
