@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   },
   posterContainer: {
     width: "100%",
-    height: 240,
+    aspectRatio: 2 / 3,
     overflow: "hidden",
   },
   poster: {
