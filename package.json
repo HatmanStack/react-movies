@@ -41,27 +41,27 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@babel/preset-env": "^7.29.2",
+    "@babel/preset-env": "^7.29.5",
     "@babel/preset-typescript": "^7.28.5",
-    "@commitlint/cli": "^20.5.0",
-    "@commitlint/config-conventional": "^20.5.0",
+    "@commitlint/cli": "^20.5.3",
+    "@commitlint/config-conventional": "^20.5.3",
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.2.14",
-    "@typescript-eslint/eslint-plugin": "^8.57.2",
+    "@typescript-eslint/eslint-plugin": "^8.59.2",
     "@typescript-eslint/parser": "^8.57.2",
-    "eslint": "^9.39.4",
+    "eslint": "^10.3.0",
     "eslint-config-expo": "^55.0.0",
     "eslint-import-resolver-typescript": "^4.4.4",
-    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "husky": "^9.1.7",
     "jest": "^30.3.0",
-    "jest-expo": "^55.0.11",
-    "lint-staged": "^16.4.0",
-    "prettier": "^3.8.1",
-    "react-test-renderer": "^19.2.3",
-    "typescript": "~5.9.2"
+    "jest-expo": "^55.0.17",
+    "lint-staged": "^17.0.2",
+    "prettier": "^3.8.3",
+    "react-test-renderer": "^19.2.5",
+    "typescript": "~6.0.3"
   },
   "overrides": {
     "react-native": {
