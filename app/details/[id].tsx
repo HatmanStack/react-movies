@@ -275,6 +275,10 @@ export default function DetailsScreen(): React.JSX.Element {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    // loadMovieDetails flips loading/error state synchronously before it
+    // awaits. Fetching on mount is the intent here; reworking it is out of
+    // scope for a dependency bump.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadMovieDetails(controller.signal);
 
     return () => {
